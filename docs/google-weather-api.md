@@ -12,8 +12,8 @@ billing enabled and the Weather API turned on.
 servers (IP allowlist) or browsers (HTTP referrer allowlist) — neither fits a
 device on a residential/DHCP IP with no referrer header. Practical options, worst
 to best:
-1. Ship the key unrestricted in firmware. Works, but a pulled-apart device or
-   packet capture leaks a live-billing key.
+1. Store the key unrestricted. Works, but a pulled-apart device, a flash dump,
+   or a packet capture leaks a live-billing key.
 2. Restrict the key to the Weather API only (no referrer/IP restriction) — caps
    the blast radius to weather quota abuse, not other Google APIs.
 3. Proxy through a small server you control that holds the real key — device
@@ -21,6 +21,15 @@ to best:
    personal use.
 
 We'll go with **(2)** for v1 and document (3) as a follow-up in the README.
+
+The key itself isn't compiled into firmware — it's entered once through the
+on-device provisioning flow (device opens its own AP + setup page on first
+boot; see [mockups/provisioning.html](mockups/provisioning.html)) and stored
+in flash (NVS), the same as the WiFi credentials and location below. That
+supersedes an earlier plan to hardcode everything in a `secrets.h` at build
+time — compile-time secrets don't let a non-developer set this device up, and
+provisioning firmware is barely more work than a captive-portal WiFi setup
+alone, which the device needs regardless.
 
 ## Endpoints used
 
@@ -59,10 +68,25 @@ formats the numbers it's given.
 
 ## Location
 
-The API takes raw lat/lon — no geocoding built in. The Tab5 has no GPS, so v1
-uses a **fixed lat/lon set at build/config time** (see `secrets.h` in the
-firmware), not runtime geolocation. Good enough for a device that lives on one
-desk; revisit if this needs to be portable.
+The Weather API takes raw lat/lon only — no geocoding built in, and the Tab5
+has no GPS. The provisioning page (see
+[mockups/provisioning.html](mockups/provisioning.html)) collects a "City or
+ZIP" string instead of asking for coordinates, since that's what a person
+actually knows.
+
+That string still has to become a lat/lon somehow. The device is in AP mode
+(not yet on the internet) while the setup form is being filled out, so
+geocoding can't happen until *after* it joins the home WiFi with the
+credentials just given to it. Concretely: save WiFi + city text + API key →
+join WiFi → **geocode the city text once** (Google's
+[Geocoding API](https://developers.google.com/maps/documentation/geocoding) —
+a separate Maps Platform API from Weather, needs its own enablement, shares
+free tier terms) → store the resulting lat/lon → start polling
+`weather.googleapis.com` with that. Not re-geocoded on every refresh, only at
+setup. A location change means re-running setup — the right tradeoff for
+something wall-mounted, not portable. This step slots into the "Syncing"
+device state in [mockups/status.html](mockups/status.html), just ahead of the
+first weather fetch.
 
 ## Quota / pricing
 

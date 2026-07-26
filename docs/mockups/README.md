@@ -12,6 +12,7 @@ Not firmware; these are the design reference the LVGL implementation follows
 | 3. 7-day forecast | `daily-forecast.html` | Full week, day/night split per row |
 | 4. Boot / sync / offline | `status.html` | Connecting, first fetch, offline fallback to stale data |
 | 5. Severe alert | `alert.html` | Alert banner over the dimmed dashboard |
+| 6. First-run provisioning | `provisioning.html` | The device's own AP + setup screen, and the phone-facing setup page it serves |
 
 All screens share `assets/style.css` and the two embedded typefaces in
 `assets/fonts/` (Archivo for display type, IBM Plex Mono for all numeric/data
