@@ -26,6 +26,36 @@ Verified requirement: the pinned `#55.03.35` tag's `platform.json` declares
 `"engines": {"platformio": ">=6.1.18"}` — PlatformIO Core 6.1.19 (the version on
 this dev machine) satisfies that with one patch release to spare.
 
+**Verified the hard way:** `pio run` on this platform version hard-fails under
+Python 3.14 with `ERROR: Python version must be between 3.10 and 3.13` — it's
+a runtime check in the platform's own build scripts, not a PlatformIO Core
+limit. macOS Homebrew defaults `python3` to whatever's newest (3.14 as of this
+writing), so a system with only that installed can't build this project as-is.
+
+The project keeps a `.venv/` (gitignored, `python3.12 -m venv .venv`) rather
+than fighting the system `python3`:
+
+```sh
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade platformio pyyaml
+pio run -e tab5
+```
+
+Two things that bit us setting this up, worth knowing if `pio run` fails for
+you too:
+- **`pyyaml` isn't pulled in by `pip install platformio`**, but the
+  `espressif32` builder's `arduino.py` framework script does `import yaml`
+  directly and fails with `ModuleNotFoundError` if it's missing. Install it
+  alongside `platformio`, in the CI workflow too (see below).
+- The very first build attempt (from a throwaway `/tmp` venv, not this
+  project's `.venv`) crashed mid-setup with `uv installation via pip failed
+  with exit code -11` (segfault) while the `espidf`/`arduino` framework was
+  bootstrapping its internal Python env. Running the exact same `pip install
+  uv` command standalone succeeded immediately, and a clean retry from a
+  fresh `.venv` didn't reproduce it at all — looked like transient resource
+  contention, not a real incompatibility. If you hit it: just retry.
+
 Notes:
 
 - **`platform` is a fork (`pioarduino`), not upstream `platformio/platform-espressif32`.**
@@ -69,7 +99,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install PlatformIO Core
-        run: pip install --upgrade platformio
+        run: pip install --upgrade platformio pyyaml
       - name: Build firmware
         run: pio run -e tab5
 ```
