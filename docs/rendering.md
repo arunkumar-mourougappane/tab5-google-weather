@@ -71,6 +71,63 @@ in on-device LVGL label text unless a custom font is generated via LVGL's
 font converter to include that range. Placeholder/scaffold text uses plain
 ASCII punctuation instead.
 
+## Typography and this panel's real density
+
+**Verified, not eyeballed:** this panel is ~294 PPI — `sqrt(1280² + 720²) /
+5in` (5" diagonal, confirmed spec) works out to a 4.36"×2.45" panel at that
+resolution, i.e. denser than a typical monitor (usually 90–110 PPI) and
+closer to a phone. A "14px" label is only ~1.2mm tall on the glass; every
+font size chosen for the current status/provisioning screens was picked by
+eye against low-DPI references (mockup screenshots, habit) without
+accounting for that, and read as illegibly small on the real device.
+Current fix: moved every screen up a tier (`LV_FONT_DEFAULT` now
+`montserrat_20`, titles at `montserrat_48`) — covered in the git history,
+not repeated here.
+
+**Open problem this doesn't solve:** `montserrat_48` — the largest size
+LVGL ships a built-in bitmap font for — is still only ~4.15mm tall. Fine
+for setup-time screens read up close; nowhere near enough for a genuinely
+large "read from across the room" number like the dashboard mockup's
+108px hero temperature digit (docs/mockups/dashboard.html). Two paths
+looked at for that, before any dashboard code exists to need it yet:
+
+- **FreeType (live TTF rendering), rejected.** Confirmed unsupported on
+  ESP32-S3; no confirmed working support found for P4 either — search
+  turned up general PSRAM/cache tuning guidance, nothing FreeType-specific
+  for this chip, which reads as "untested/unlikely" rather than "yes."
+  Even where it does run, live TTF rasterization is measurably slower
+  per-glyph than a pre-rendered bitmap (mitigated only by a glyph cache,
+  which adds complexity for exactly the wrong case here — a kiosk's
+  character set barely changes at runtime, so there's little upside to
+  paying rendering cost per glyph instead of once at build time). Working
+  against the stated "fast GUI response" goal for a case that doesn't
+  need runtime flexibility.
+- **Pre-generate the specific bitmap fonts we need, via LVGL's own
+  [font converter](https://lvgl.io/tools/fontconverter) (or the offline
+  `lv_font_conv` CLI for a scriptable pipeline) — the likely path.** Same
+  rendering model already proven working on this device (no new runtime
+  dependency), and can be generated from the *same* TTFs already in the
+  repo for the HTML mockups (Archivo for headings/hero numbers, IBM Plex
+  Mono for tabular data) instead of falling back to LVGL's default
+  Montserrat — keeps the device visually consistent with the mockups
+  rather than introducing a second, different typographic identity.
+
+  Subsetting matters a lot at this scale: a full-Latin 96px+ font is
+  expensive to store, but a hero temperature readout only ever needs
+  digits + a handful of symbols (`0-9 ° - . :`), so narrow per-purpose
+  fonts (e.g. "Archivo Bold 108, digits+°" for the big number vs. a
+  fuller "Archivo SemiBold 32, full Latin" for city names) keep flash
+  sane instead of one large kitchen-sink font per size. Per LVGL's own
+  docs: 4bpp anti-aliasing for quality, and reach for the compression
+  option only on the largest, least-frequently-redrawn fonts specifically
+  (compression is ~30% slower to render, a cost worth paying only where a
+  font is both large and rare) — not something to enable project-wide by
+  default.
+
+  Not implemented — no dashboard code exists yet to need it. Worth
+  revisiting once the dashboard's actual hero-number treatment is being
+  built, not before.
+
 ## Why not the PPA (yet)
 
 The ESP32-P4's PPA/DMA2D hardware accelerator can offload fills, blends,
@@ -94,3 +151,8 @@ data is not.
 - [LVGL PPA (Espressif) integration docs](https://lvgl.io/docs/open/integration/chip_vendors/espressif/hardware_accelerator_ppa)
 - [LVGL DMA2D (Espressif) integration docs](https://lvgl.io/docs/open/integration/chip_vendors/espressif/hardware_accelerator_dma2d)
 - [ESP-IDF PPA peripheral guide](https://docs.espressif.com/projects/esp-idf/en/stable/esp32p4/api-reference/peripherals/ppa.html)
+- [LVGL Font Converter (online tool)](https://lvgl.io/tools/fontconverter)
+- [lv_font_conv (offline/scriptable converter)](https://github.com/lvgl/lv_font_conv)
+- [LVGL Built-In Fonts docs](https://docs.lvgl.io/master/main-modules/fonts/built_in_fonts.html) — bpp/compression tradeoffs
+- [LVGL FreeType Font Engine docs](https://docs.lvgl.io/master/libs/font_support/freetype.html)
+- [Rendering TTF fonts on ESP32 with LVGL + Tiny TTF (Medium)](https://medium.com/@pvginkel/rendering-ttf-fonts-on-esp32-devices-using-lvgl-and-tiny-ttf-0278374a06df) — the S3 FreeType-unsupported note, live-render performance discussion
