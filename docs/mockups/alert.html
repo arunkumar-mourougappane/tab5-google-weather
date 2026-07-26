@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tab5 Weather — Severe Alert</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  :root { --alert: #b8341f; --alert-soft: rgba(184,52,31,0.12); }
+  @media (prefers-color-scheme: dark) { :root { --alert: #ef6b52; --alert-soft: rgba(239,107,82,0.16); } }
+  .device[data-theme="dark"] { --alert: #ef6b52; --alert-soft: rgba(239,107,82,0.16); }
+  .device[data-theme="light"] { --alert: #b8341f; --alert-soft: rgba(184,52,31,0.12); }
+
+  .backdrop { position: absolute; inset: 0; filter: blur(2px) saturate(0.7); opacity: 0.5; pointer-events: none; }
+  .backdrop .statusbar { display: flex; justify-content: space-between; padding: 18px 30px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--sub); }
+  .backdrop .now { display: flex; align-items: center; gap: 20px; padding: 10px 30px; }
+  .backdrop .temp { font-family: 'IBM Plex Mono', monospace; font-size: 88px; font-weight: 500; }
+  .backdrop .row { display: flex; gap: 10px; padding: 0 30px; }
+  .backdrop .chip { width: 140px; height: 54px; background: var(--panel); border-radius: 8px; border: 1px solid var(--line); }
+
+  .alert-banner {
+    position: relative; z-index: 2;
+    margin: 26px 26px 0;
+    background: var(--paper);
+    border: 1.5px solid var(--alert);
+    border-radius: 12px;
+    padding: 18px 22px;
+    display: flex; gap: 16px; align-items: flex-start;
+    box-shadow: 0 14px 30px -12px var(--shadow);
+  }
+  .alert-banner .icon { flex: 0 0 auto; width: 34px; height: 34px; margin-top: 2px; }
+  .alert-banner .body { flex: 1 1 auto; }
+  .alert-eyebrow {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--alert); margin-bottom: 4px;
+  }
+  .alert-eyebrow .badge { background: var(--alert); color: var(--paper); border-radius: 4px; padding: 2px 7px; letter-spacing: 0.06em; }
+  .alert-title { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+  .alert-desc { font-size: 13.5px; color: var(--sub); line-height: 1.5; max-width: 640px; }
+  .alert-meta { display: flex; gap: 18px; margin-top: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--sub); }
+  .alert-meta b { color: var(--ink); }
+  .alert-dismiss {
+    flex: 0 0 auto; align-self: center;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--sub);
+    border: 1px solid var(--line-strong); border-radius: 999px; padding: 7px 12px;
+    text-align: center; line-height: 1.3;
+  }
+
+  .below-note {
+    position: relative; z-index: 2; margin-top: auto; padding: 14px 30px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--sub);
+  }
+</style>
+</head>
+<body>
+
+<p class="crumbs"><a href="index.html">&larr; All mockups</a> &middot; 5 of 5 &middot; Severe alert takeover</p>
+
+<div class="intro">
+  <p class="eyebrow">Tab5 &middot; Google Weather &mdash; Screen 5</p>
+  <h1>Severe alert: overlays the dashboard, doesn&rsquo;t replace it</h1>
+  <p>The Weather API's alerts data surfaces as a banner over a dimmed dashboard, not a full-screen swap &mdash; current conditions stay visible underneath. A dedicated alert red is used only here, kept apart from the brass/teal/ember accents used everywhere else, so it reads as urgent precisely because the rest of the UI never uses that color.</p>
+</div>
+
+<div class="stage-controls">
+  <span>Display mode</span>
+  <div class="toggle" role="group" aria-label="Day or night preview">
+    <button type="button" class="active" data-mode="light">Day</button>
+    <button type="button" data-mode="dark">Night</button>
+  </div>
+</div>
+
+<div class="device" id="device">
+  <div class="screen">
+
+    <div class="backdrop">
+      <div class="statusbar"><span>Bellevue, WA</span><span>14:32</span></div>
+      <div class="now"><div class="temp">68&deg;</div></div>
+      <div class="row"><div class="chip"></div><div class="chip"></div><div class="chip"></div><div class="chip"></div></div>
+    </div>
+
+    <div class="alert-banner">
+      <svg class="icon" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2.5L23 21.5H1L12 2.5Z" stroke="var(--alert)" stroke-width="1.8" stroke-linejoin="round"/>
+        <line x1="12" y1="9.5" x2="12" y2="14.5" stroke="var(--alert)" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="12" cy="17.7" r="1.1" fill="var(--alert)"/>
+      </svg>
+      <div class="body">
+        <div class="alert-eyebrow"><span class="badge">Severe</span>Severe Thunderstorm Warning</div>
+        <div class="alert-title">Storm cell moving northeast, 60 mph gusts expected</div>
+        <div class="alert-desc">National Weather Service, via Google Weather: quarter-size hail and damaging winds possible through the warned area. Seek shelter indoors.</div>
+        <div class="alert-meta"><span>EFFECTIVE <b>14:15&ndash;15:30</b></span><span>SOURCE <b>NWS Seattle</b></span></div>
+      </div>
+      <div class="alert-dismiss">Auto-clears<br>with API</div>
+    </div>
+
+    <div class="below-note">Dashboard dims to 50% under any active alert; returns to normal automatically once weather.googleapis.com stops reporting it.</div>
+
+  </div>
+</div>
+
+<p class="caption">One alert shown for clarity; multiple concurrent alerts stack as additional banners, oldest highest-severity first.</p>
+
+<script>
+  const toggle = document.querySelector('.toggle');
+  const device = document.getElementById('device');
+  toggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    device.setAttribute('data-theme', btn.dataset.mode);
+  });
+</script>
+</body>
+</html>

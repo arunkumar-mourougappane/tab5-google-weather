@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tab5 Weather — Screen Mockups</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 22px;
+    width: min(1180px, 100%);
+  }
+  .card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel);
+    overflow: hidden;
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .card:hover { border-color: var(--brass); transform: translateY(-2px); }
+  .card:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  .thumb {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1280 / 720;
+    overflow: hidden;
+    background: #050607;
+  }
+  .thumb iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1280px;
+    height: 720px;
+    border: 0;
+    transform-origin: top left;
+    pointer-events: none;
+  }
+  .card-body { padding: 14px 18px 16px; }
+  .card-num {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--brass-strong); margin-bottom: 4px;
+  }
+  .card-title { font-size: 15.5px; font-weight: 700; margin-bottom: 4px; }
+  .card-desc { font-size: 12.5px; color: var(--sub); line-height: 1.5; }
+
+  .stack { width: min(1180px, 100%); display: flex; flex-direction: column; gap: 10px; }
+  .stack h2 { font-size: 14px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sub); margin: 30px 0 0; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <p class="eyebrow">Tab5 &middot; Google Weather</p>
+  <h1>Screen mockups</h1>
+  <p>Five screens covering the full loop a wall-mounted weather kiosk needs: the default dashboard, two detail drill-downs, the states that show up when things go wrong, and a severe-alert takeover. Click any card to open it full-size and interactive (day/night toggle included).</p>
+</div>
+
+<div class="gallery" id="gallery"></div>
+
+<p class="caption">All five share one design system &mdash; <code>assets/style.css</code> &mdash; so a token change (palette, type scale) here previews consistently everywhere at once. See <a href="https://github.com/arunkumar-mourougappane/tab5-google-weather/blob/main/docs/rendering.md">docs/rendering.md</a> for how this maps to actual LVGL widgets.</p>
+
+<script>
+  const screens = [
+    { n: "1", file: "dashboard.html", title: "Dashboard", desc: "Default always-on screen: current conditions, 8-hour strip, 7-day outlook." },
+    { n: "2", file: "hourly-detail.html", title: "Hourly detail", desc: "16-hour temperature/precipitation chart, reached by tapping “Hourly”." },
+    { n: "3", file: "daily-forecast.html", title: "7-day forecast", desc: "Full week with day/night split per row, sunrise/sunset/moon phase." },
+    { n: "4", file: "status.html", title: "Boot / sync / offline", desc: "Wi-Fi connect, first fetch, and graceful offline fallback to stale data." },
+    { n: "5", file: "alert.html", title: "Severe alert", desc: "Alert banner overlays the dimmed dashboard rather than replacing it." },
+  ];
+  const gallery = document.getElementById('gallery');
+  screens.forEach(s => {
+    const a = document.createElement('a');
+    a.className = 'card';
+    a.href = s.file;
+    a.innerHTML = `
+      <div class="thumb"><iframe src="${s.file}" tabindex="-1" loading="lazy"></iframe></div>
+      <div class="card-body">
+        <div class="card-num">Screen ${s.n} of 5</div>
+        <div class="card-title">${s.title}</div>
+        <div class="card-desc">${s.desc}</div>
+      </div>
+    `;
+    gallery.appendChild(a);
+  });
+
+  function scaleThumbs() {
+    document.querySelectorAll('.thumb').forEach(t => {
+      const scale = t.clientWidth / 1280;
+      t.querySelector('iframe').style.transform = `scale(${scale})`;
+    });
+  }
+  window.addEventListener('resize', scaleThumbs);
+  window.addEventListener('load', scaleThumbs);
+  new ResizeObserver(scaleThumbs).observe(document.body);
+</script>
+</body>
+</html>

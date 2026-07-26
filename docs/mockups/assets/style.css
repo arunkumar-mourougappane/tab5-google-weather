@@ -1,0 +1,165 @@
+/* Shared design system for the Tab5 weather UI mockups.
+   Instrument-panel concept: brass/teal readouts on a warm ground,
+   tabular mono digits for every number. See docs/mockups/README.md. */
+
+@font-face {
+  font-family: 'Archivo';
+  font-weight: 500 800;
+  font-style: normal;
+  src: url('fonts/archivo-variable.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-weight: 400;
+  font-style: normal;
+  src: url('fonts/plexmono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-weight: 500;
+  font-style: normal;
+  src: url('fonts/plexmono-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-weight: 600;
+  font-style: normal;
+  src: url('fonts/plexmono-600.woff2') format('woff2');
+}
+
+:root {
+  --ink: #1c2024;
+  --sub: #52585e;
+  --paper: #f2ede1;
+  --panel: #e9e2d2;
+  --panel-2: #ded5c0;
+  --line: rgba(28,32,36,0.14);
+  --line-strong: rgba(28,32,36,0.28);
+  --brass: #a8681c;
+  --brass-strong: #8f5814;
+  --teal: #2c655f;
+  --ember: #ab431c;
+  --shadow: rgba(28,24,16,0.18);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f0e9d8;
+    --sub: #a89e8c;
+    --paper: #121417;
+    --panel: #1b1e22;
+    --panel-2: #22262b;
+    --line: rgba(240,233,216,0.10);
+    --line-strong: rgba(240,233,216,0.22);
+    --brass: #d99a4e;
+    --brass-strong: #e9b06c;
+    --teal: #6fb3ac;
+    --ember: #e2794e;
+    --shadow: rgba(0,0,0,0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #f0e9d8; --sub: #a89e8c; --paper: #121417; --panel: #1b1e22; --panel-2: #22262b;
+  --line: rgba(240,233,216,0.10); --line-strong: rgba(240,233,216,0.22);
+  --brass: #d99a4e; --brass-strong: #e9b06c; --teal: #6fb3ac; --ember: #e2794e;
+  --shadow: rgba(0,0,0,0.5); color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --ink: #1c2024; --sub: #52585e; --paper: #f2ede1; --panel: #e9e2d2; --panel-2: #ded5c0;
+  --line: rgba(28,32,36,0.14); --line-strong: rgba(28,32,36,0.28);
+  --brass: #a8681c; --brass-strong: #8f5814; --teal: #2c655f; --ember: #ab431c;
+  --shadow: rgba(28,24,16,0.18); color-scheme: light;
+}
+/* The device frame previews the kiosk's own day/night auto-dim, independent
+   of the viewer's OS theme. */
+.device[data-theme="dark"] {
+  --ink: #f0e9d8; --sub: #a89e8c; --paper: #121417; --panel: #1b1e22; --panel-2: #22262b;
+  --line: rgba(240,233,216,0.10); --line-strong: rgba(240,233,216,0.22);
+  --brass: #d99a4e; --brass-strong: #e9b06c; --teal: #6fb3ac; --ember: #e2794e;
+  --shadow: rgba(0,0,0,0.5);
+}
+.device[data-theme="light"] {
+  --ink: #1c2024; --sub: #52585e; --paper: #f2ede1; --panel: #e9e2d2; --panel-2: #ded5c0;
+  --line: rgba(28,32,36,0.14); --line-strong: rgba(28,32,36,0.28);
+  --brass: #a8681c; --brass-strong: #8f5814; --teal: #2c655f; --ember: #ab431c;
+  --shadow: rgba(28,24,16,0.18);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Archivo', sans-serif;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  padding: 36px 20px 56px;
+}
+a { color: inherit; }
+
+.intro { max-width: 780px; text-align: center; }
+.intro .eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--brass-strong); margin: 0 0 10px;
+}
+.intro h1 { font-size: 25px; font-weight: 700; margin: 0 0 8px; text-wrap: balance; }
+.intro p { font-size: 14.5px; line-height: 1.55; color: var(--sub); margin: 0; text-wrap: balance; }
+
+.crumbs {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  color: var(--sub);
+  letter-spacing: 0.04em;
+}
+.crumbs a:hover { color: var(--brass-strong); }
+
+.stage-controls {
+  display: flex; align-items: center; gap: 12px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--sub);
+}
+.toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; overflow: hidden; }
+.toggle button {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.06em;
+  text-transform: uppercase; background: transparent; color: var(--sub);
+  border: none; padding: 7px 16px; cursor: pointer;
+}
+.toggle button.active { background: var(--ink); color: var(--paper); }
+.toggle button:focus-visible { outline: 2px solid var(--brass); outline-offset: -2px; }
+
+/* ---- Device frame ---- */
+.device {
+  width: min(1280px, 100%);
+  aspect-ratio: 1280 / 720;
+  background: #050607;
+  border-radius: 22px;
+  padding: 14px;
+  box-shadow: 0 30px 70px -20px var(--shadow), 0 2px 0 var(--line-strong) inset;
+}
+.screen {
+  width: 100%; height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  font-variant-numeric: tabular-nums;
+}
+
+.caption {
+  max-width: 900px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  color: var(--sub);
+  text-align: center;
+  line-height: 1.6;
+}
+.caption b { color: var(--ink); }

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tab5 Weather — 7-Day Forecast</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .statusbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 30px 10px; flex: 0 0 auto; }
+  .statusbar .back { display: flex; align-items: center; gap: 12px; }
+  .statusbar .back-btn {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.04em;
+    color: var(--sub); text-decoration: none; display: flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 12px 6px 10px;
+  }
+  .statusbar h2 { font-size: 17px; font-weight: 700; margin: 0; }
+  .statusbar .sub { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--sub); }
+  .statusbar .clock { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 500; }
+
+  .head-row {
+    display: grid; grid-template-columns: 118px 150px 1fr 1fr 96px;
+    padding: 8px 30px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sub);
+  }
+  .head-row span:nth-child(3), .head-row span:nth-child(4) { text-align: left; padding-left: 4px; }
+  .head-row span:last-child { text-align: right; }
+
+  .days { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: 0 14px; }
+  .day-row {
+    display: grid; grid-template-columns: 118px 150px 1fr 1fr 96px; align-items: center;
+    gap: 4px; padding: 0 16px; border-bottom: 1px solid var(--line); flex: 1 1 0; min-height: 0;
+  }
+  .day-row:last-child { border-bottom: none; }
+  .day-row.today { background: var(--panel); border-radius: 8px; border-bottom-color: transparent; }
+
+  .dname { display: flex; flex-direction: column; gap: 1px; }
+  .dname .d { font-size: 15px; font-weight: 700; }
+  .dname .d.today { color: var(--brass-strong); }
+  .dname .date { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--sub); }
+
+  .cond { display: flex; align-items: center; gap: 10px; }
+  .cond .icon { width: 26px; height: 26px; flex: 0 0 auto; }
+  .cond .label { font-size: 12.5px; font-weight: 600; line-height: 1.25; }
+
+  .segment { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .segment .icon { width: 15px; height: 15px; flex: 0 0 auto; opacity: 0.75; }
+  .segment .seg-temp { font-weight: 500; min-width: 30px; }
+  .segment .seg-pop { color: var(--teal); font-size: 10.5px; min-width: 30px; }
+
+  .range { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; justify-content: flex-end; }
+  .track { position: relative; height: 3px; background: var(--line); border-radius: 3px; width: 60px; }
+  .track .fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--ember)); }
+
+  .sunbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    padding: 10px 30px 16px; border-top: 1px solid var(--line);
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--sub);
+  }
+  .sunbar .item { display: flex; align-items: center; gap: 6px; }
+</style>
+</head>
+<body>
+
+<p class="crumbs"><a href="index.html">&larr; All mockups</a> &middot; 3 of 5 &middot; 7-day forecast</p>
+
+<div class="intro">
+  <p class="eyebrow">Tab5 &middot; Google Weather &mdash; Screen 3</p>
+  <h1>7-day outlook: reached from "7-Day Outlook &rarr;"</h1>
+  <p>One row per <code>forecast.days</code> entry, splitting the API's own <b>daytime</b> / <b>nighttime</b> forecast fields into two columns rather than collapsing them to a single icon &mdash; that split is real data the compact dashboard card throws away.</p>
+</div>
+
+<div class="stage-controls">
+  <span>Display mode</span>
+  <div class="toggle" role="group" aria-label="Day or night preview">
+    <button type="button" class="active" data-mode="light">Day</button>
+    <button type="button" data-mode="dark">Night</button>
+  </div>
+</div>
+
+<div class="device" id="device">
+  <div class="screen">
+
+    <div class="statusbar">
+      <div class="back">
+        <a class="back-btn" href="dashboard.html">&larr; Dashboard</a>
+        <div>
+          <h2>7-day outlook</h2>
+          <div class="sub">BELLEVUE, WA</div>
+        </div>
+      </div>
+      <span class="clock">14:32</span>
+    </div>
+
+    <div class="head-row">
+      <span>Day</span>
+      <span>Condition</span>
+      <span>Day</span>
+      <span>Night</span>
+      <span>Range</span>
+    </div>
+
+    <div class="days" id="days"></div>
+
+    <div class="sunbar" id="sunbar"></div>
+
+  </div>
+</div>
+
+<p class="caption">Built as an LVGL scrollable list of 7 fixed-height rows (no virtualization needed at this count) &mdash; each row bound directly to one <code>forecastDays[]</code> element.</p>
+
+<script>
+  const iconSun = `<svg class="icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="var(--brass)" stroke-width="1.8"/><g stroke="var(--brass)" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"/><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"/><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"/></g></svg>`;
+  const iconCloud = `<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M6 18C3.5 18 1.5 16 1.5 13.6C1.5 11.4 3.1 9.6 5.2 9.3C5.9 6.5 8.5 4.5 11.5 4.5C15 4.5 17.9 7.2 18.2 10.7C20.4 11.1 22 13 22 15.2C22 17.7 19.9 19.7 17.3 19.7H6.5" stroke="var(--ink)" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+  const iconRain = `<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M5 14C2.8 14 1 12.2 1 10.1C1 8.1 2.4 6.5 4.3 6.2C5 3.9 7.1 2.3 9.6 2.3C12.7 2.3 15.3 4.7 15.6 7.7C17.7 8 19.3 9.7 19.3 11.8C19.3 14.1 17.4 16 15 16H5" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/><g stroke="var(--teal)" stroke-width="1.6" stroke-linecap="round"><line x1="6" y1="19" x2="5" y2="22"/><line x1="11" y1="19" x2="10" y2="22"/><line x1="16" y1="19" x2="15" y2="22"/></g></svg>`;
+  const iconMoon = `<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="var(--sub)" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+
+  const days = [
+    { d: "Today", date: "Jul 25", cond: "Partly Cloudy", icon: iconCloud, dayT: 74, dayPop: 20, dIcon: iconCloud, nightT: 58, nightPop: 10, nIcon: iconMoon, today: true },
+    { d: "Wed", date: "Jul 26", cond: "Partly Cloudy", icon: iconCloud, dayT: 72, dayPop: 40, dIcon: iconCloud, nightT: 56, nightPop: 30, nIcon: iconMoon },
+    { d: "Thu", date: "Jul 27", cond: "Showers", icon: iconRain, dayT: 69, dayPop: 60, dIcon: iconRain, nightT: 54, nightPop: 50, nIcon: iconRain },
+    { d: "Fri", date: "Jul 28", cond: "Rain", icon: iconRain, dayT: 65, dayPop: 70, dIcon: iconRain, nightT: 51, nightPop: 55, nIcon: iconRain },
+    { d: "Sat", date: "Jul 29", cond: "Partly Cloudy", icon: iconCloud, dayT: 68, dayPop: 30, dIcon: iconCloud, nightT: 52, nightPop: 15, nIcon: iconMoon },
+    { d: "Sun", date: "Jul 30", cond: "Sunny", icon: iconSun, dayT: 71, dayPop: 10, dIcon: iconSun, nightT: 55, nightPop: 5, nIcon: iconMoon },
+    { d: "Mon", date: "Jul 31", cond: "Sunny", icon: iconSun, dayT: 75, dayPop: 5, dIcon: iconSun, nightT: 57, nightPop: 5, nIcon: iconMoon },
+  ];
+  const gMin = Math.min(...days.map(d => d.nightT)), gMax = Math.max(...days.map(d => d.dayT));
+  const wrap = document.getElementById('days');
+  days.forEach(d => {
+    const left = ((d.nightT - gMin) / (gMax - gMin)) * 100;
+    const width = ((d.dayT - d.nightT) / (gMax - gMin)) * 100;
+    const row = document.createElement('div');
+    row.className = 'day-row' + (d.today ? ' today' : '');
+    row.innerHTML = `
+      <div class="dname"><span class="d${d.today ? ' today' : ''}">${d.d}</span><span class="date">${d.date}</span></div>
+      <div class="cond">${d.icon}<span class="label">${d.cond}</span></div>
+      <div class="segment">${d.dIcon}<span class="seg-temp">${d.dayT}&deg;</span><span class="seg-pop">${d.dayPop}%</span></div>
+      <div class="segment">${d.nIcon}<span class="seg-temp">${d.nightT}&deg;</span><span class="seg-pop">${d.nightPop}%</span></div>
+      <div class="range"><div class="track"><div class="fill" style="left:${left}%;width:${width}%"></div></div></div>
+    `;
+    wrap.appendChild(row);
+  });
+
+  const sunbar = document.getElementById('sunbar');
+  sunbar.innerHTML = `
+    <span class="item">${iconSun.replace('class="icon"', 'width="14" height="14"')} Sunrise 5:52</span>
+    <span class="item">${iconSun.replace('class="icon"', 'width="14" height="14"')} Sunset 20:47</span>
+    <span class="item">${iconMoon.replace('class="icon"', 'width="14" height="14"')} Waxing gibbous, 82%</span>
+    <span>weather.googleapis.com &middot; v1/forecast/days</span>
+  `;
+
+  const toggle = document.querySelector('.toggle');
+  const device = document.getElementById('device');
+  toggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    device.setAttribute('data-theme', btn.dataset.mode);
+  });
+</script>
+</body>
+</html>

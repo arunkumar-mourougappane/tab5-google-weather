@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tab5 Weather — Dashboard</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .now { display: flex; align-items: center; gap: 26px; }
+  .now .reading { display: flex; flex-direction: column; gap: 2px; }
+  .now .temp {
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 108px;
+    line-height: 0.9; letter-spacing: -0.02em; display: flex; align-items: flex-start;
+  }
+  .now .temp .deg { font-size: 44px; margin-top: 6px; color: var(--brass-strong); }
+  .now .condition { font-size: 19px; font-weight: 600; margin-top: 6px; }
+  .now .feels { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--sub); margin-top: 3px; }
+
+  .hilo { display: flex; gap: 22px; align-items: center; margin-top: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; }
+  .hilo .hi { color: var(--ember); }
+  .hilo .lo { color: var(--teal); }
+  .hilo .sep { color: var(--line-strong); }
+
+  .statusbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 30px 12px; flex: 0 0 auto; }
+  .statusbar .loc { display: flex; align-items: baseline; gap: 10px; }
+  .statusbar .loc .name { font-weight: 700; font-size: 17px; letter-spacing: 0.01em; }
+  .statusbar .loc .region { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--sub); letter-spacing: 0.05em; text-transform: uppercase; }
+  .statusbar .right { display: flex; align-items: center; gap: 22px; font-family: 'IBM Plex Mono', monospace; color: var(--sub); font-size: 12.5px; }
+  .statusbar .clock { font-size: 20px; color: var(--ink); font-weight: 500; letter-spacing: 0.02em; }
+  .statusbar .sync { display: flex; align-items: center; gap: 7px; }
+  .statusbar .sync .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 20%, transparent); }
+
+  .main { flex: 1 1 auto; display: grid; grid-template-columns: 1.55fr 1fr; gap: 0; min-height: 0; border-top: 1px solid var(--line); }
+  .primary { padding: 22px 30px 18px; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid var(--line); min-height: 0; }
+
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .metric { background: var(--panel); padding: 12px 14px; display: flex; flex-direction: column; gap: 5px; }
+  .metric .label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sub); }
+  .metric .value { font-family: 'IBM Plex Mono', monospace; font-size: 17px; font-weight: 500; }
+  .metric .value span { font-size: 11px; color: var(--sub); font-weight: 400; }
+
+  .hourly { padding: 14px 30px 16px; border-top: 1px solid var(--line); }
+  .hourly .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .hourly .head .title { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sub); }
+  .hourly .head .title b { color: var(--ink); font-weight: 600; letter-spacing: 0.02em; }
+  .hourly .head a { text-decoration: none; }
+  .hourly .head a:hover { color: var(--brass-strong); }
+  .hourly-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+  .hour { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 6px; position: relative; }
+  .hour .t { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--sub); }
+  .hour .bar-wrap { height: 46px; display: flex; align-items: flex-end; }
+  .hour .bar { width: 4px; border-radius: 2px; background: var(--brass); }
+  .hour .temp { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; font-weight: 500; }
+  .hour .pop { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: var(--teal); height: 12px; }
+  .hour.now-hour .t { color: var(--brass-strong); font-weight: 600; }
+  .hour.now-hour .bar { background: var(--brass-strong); }
+  .hour.now-hour::before { content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 22px; height: 2px; background: var(--brass-strong); border-radius: 2px; }
+
+  .daily { padding: 20px 26px 16px; display: flex; flex-direction: column; min-height: 0; }
+  .daily .title { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sub); margin-bottom: 10px; display: flex; justify-content: space-between; }
+  .daily .title a { text-decoration: none; }
+  .daily .title a:hover { color: var(--brass-strong); }
+  .day-row { display: grid; grid-template-columns: 74px 26px 1fr auto; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .day-row:first-of-type { border-top: none; }
+  .day-row .d { font-size: 14px; font-weight: 600; }
+  .day-row .d.today { color: var(--brass-strong); }
+  .day-row .icon { width: 22px; height: 22px; }
+  .day-row .range { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .track { position: relative; height: 3px; background: var(--line); border-radius: 3px; flex: 1 1 auto; }
+  .track .fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--ember)); }
+  .day-row .pop { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--sub); width: 34px; text-align: right; }
+
+  .footer { margin-top: auto; padding-top: 10px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--sub); letter-spacing: 0.04em; }
+
+  @media (max-width: 760px) {
+    .now .temp { font-size: 72px; }
+    .now .temp .deg { font-size: 30px; }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .hourly-row { grid-template-columns: repeat(4, 1fr); row-gap: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<p class="crumbs"><a href="index.html">&larr; All mockups</a> &middot; 1 of 5 &middot; Dashboard (home)</p>
+
+<div class="intro">
+  <p class="eyebrow">Tab5 &middot; Google Weather &mdash; Screen 1</p>
+  <h1>Dashboard: the default, always-on screen</h1>
+  <p>Instrument-panel reading of current conditions, an 8-hour strip chart, and the 7-day outlook, sized to read from across the room. Tapping <b>Hourly</b> or <b>7-Day Outlook</b> pushes to the detail screens.</p>
+</div>
+
+<div class="stage-controls">
+  <span>Display mode</span>
+  <div class="toggle" role="group" aria-label="Day or night preview">
+    <button type="button" class="active" data-mode="light">Day</button>
+    <button type="button" data-mode="dark">Night</button>
+  </div>
+</div>
+
+<div class="device" id="device">
+  <div class="screen">
+
+    <div class="statusbar">
+      <div class="loc">
+        <span class="name">Bellevue</span>
+        <span class="region">WA &middot; Google Weather</span>
+      </div>
+      <div class="right">
+        <span class="sync"><span class="dot"></span>Synced 2 min ago</span>
+        <span class="clock">14:32</span>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="primary">
+        <div>
+          <div class="now">
+            <div class="glyph">
+              <svg width="86" height="86" viewBox="0 0 86 86" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="34" cy="36" r="15" stroke="var(--brass)" stroke-width="2.5"/>
+                <g stroke="var(--brass)" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="34" y1="10" x2="34" y2="4"/>
+                  <line x1="52" y1="18" x2="56" y2="14"/>
+                  <line x1="14" y1="18" x2="10" y2="14"/>
+                </g>
+                <path d="M20 62C13 62 8 57 8 51C8 45.2 12.5 40.5 18.1 40C20 33.7 25.9 29 33 29C41 29 47.6 34.9 48.7 42.6C55.6 43.4 61 49.1 61 56C61 62.6 55.6 68 49 68H21" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="reading">
+              <div class="temp">68<span class="deg">&deg;F</span></div>
+              <div class="condition">Partly Cloudy</div>
+              <div class="feels">FEELS LIKE 66&deg; &middot; AS OF 14:30</div>
+            </div>
+          </div>
+          <div class="hilo">
+            <span class="hi">&#9650; 74&deg; HIGH</span>
+            <span class="sep">/</span>
+            <span class="lo">&#9660; 58&deg; LOW</span>
+          </div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><span class="label">Humidity</span><span class="value">62<span>%</span></span></div>
+          <div class="metric"><span class="label">Wind</span><span class="value">8<span> mph NW</span></span></div>
+          <div class="metric"><span class="label">UV Index</span><span class="value">4<span>moderate</span></span></div>
+          <div class="metric"><span class="label">Precip</span><span class="value">20<span>%</span></span></div>
+        </div>
+      </div>
+
+      <div class="daily">
+        <div class="title"><span>7-Day Outlook</span><a href="daily-forecast.html">expand &rarr;</a></div>
+        <div id="day-rows"></div>
+        <div class="footer">
+          <span>weather.googleapis.com</span>
+          <span>v1 &middot; forecast.days</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hourly">
+      <div class="head">
+        <span class="title"><b>Hourly</b> &middot; next 8 hours</span>
+        <a class="title" href="hourly-detail.html">expand &rarr;</a>
+      </div>
+      <div class="hourly-row" id="hourly-row"></div>
+    </div>
+
+  </div>
+</div>
+
+<p class="caption">On device this is built with <b>LVGL</b> objects driven by <b>M5GFX</b>, redrawn only where data changed (partial DMA flush) &mdash; see <code>docs/rendering.md</code>.</p>
+
+<script>
+  const hours = [
+    { t: "NOW", temp: 68, pop: 10 }, { t: "15", temp: 70, pop: 10 }, { t: "16", temp: 71, pop: 15 },
+    { t: "17", temp: 70, pop: 20 }, { t: "18", temp: 67, pop: 30 }, { t: "19", temp: 64, pop: 40 },
+    { t: "20", temp: 61, pop: 35 }, { t: "21", temp: 59, pop: 20 },
+  ];
+  const minT = Math.min(...hours.map(h => h.temp)), maxT = Math.max(...hours.map(h => h.temp));
+  const hourlyRow = document.getElementById('hourly-row');
+  hours.forEach((h, i) => {
+    const pct = 18 + ((h.temp - minT) / Math.max(1, (maxT - minT))) * 82;
+    const el = document.createElement('div');
+    el.className = 'hour' + (i === 0 ? ' now-hour' : '');
+    el.innerHTML = `<span class="t">${h.t}</span><div class="bar-wrap"><div class="bar" style="height:${pct}%"></div></div><span class="temp">${h.temp}&deg;</span><span class="pop">${h.pop >= 20 ? h.pop + '%' : ''}</span>`;
+    hourlyRow.appendChild(el);
+  });
+
+  const days = [
+    { d: "Today", hi: 74, lo: 58, pop: 20 }, { d: "Wed", hi: 72, lo: 56, pop: 40 },
+    { d: "Thu", hi: 69, lo: 54, pop: 60 }, { d: "Fri", hi: 65, lo: 51, pop: 70 },
+    { d: "Sat", hi: 68, lo: 52, pop: 30 }, { d: "Sun", hi: 71, lo: 55, pop: 10 },
+  ];
+  const dayLos = days.map(d => d.lo), dayHis = days.map(d => d.hi);
+  const gMin = Math.min(...dayLos), gMax = Math.max(...dayHis);
+  const dayRows = document.getElementById('day-rows');
+  days.forEach((d, i) => {
+    const left = ((d.lo - gMin) / (gMax - gMin)) * 100;
+    const width = ((d.hi - d.lo) / (gMax - gMin)) * 100;
+    const row = document.createElement('div');
+    row.className = 'day-row';
+    row.innerHTML = `<span class="d${i === 0 ? ' today' : ''}">${d.d}</span>
+      <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M6 18C3.5 18 1.5 16 1.5 13.6C1.5 11.4 3.1 9.6 5.2 9.3C5.9 6.5 8.5 4.5 11.5 4.5C15 4.5 17.9 7.2 18.2 10.7C20.4 11.1 22 13 22 15.2C22 17.7 19.9 19.7 17.3 19.7H6.5" stroke="var(--sub)" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <div class="range"><span style="color:var(--teal)">${d.lo}&deg;</span><div class="track"><div class="fill" style="left:${left}%;width:${width}%"></div></div><span style="color:var(--ember)">${d.hi}&deg;</span></div>
+      <span class="pop">${d.pop}%</span>`;
+    dayRows.appendChild(row);
+  });
+
+  const toggle = document.querySelector('.toggle');
+  const device = document.getElementById('device');
+  toggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    device.setAttribute('data-theme', btn.dataset.mode);
+  });
+</script>
+</body>
+</html>
