@@ -50,16 +50,38 @@ void describeError(int httpCode, const String &canonicalStatus, const String &ap
   }
 }
 
+// One TLS connection reused across all calls to weather.googleapis.com in
+// this boot cycle (function-static, so it survives between getJson()
+// calls), not a fresh WiFiClientSecure/HTTPClient torn down and
+// reconnected per endpoint. A fresh connection per call was the original
+// shape (mirroring geocode.cpp, which only ever makes one call per boot);
+// on real hardware, the *third* full TLS teardown+reconnect in a row
+// reliably crashed the esp-hosted SDIO driver
+// (`assert failed: sdio_rx_get_buffer`) with plenty of free heap and no
+// improvement from adding delay between requests — pointing at connection
+// churn over the SDIO link, not resource exhaustion or timing, as the
+// actual trigger. http.setReuse(true) keeps the socket open across end(),
+// so the second and third requests here reuse it instead of reconnecting.
+WiFiClientSecure &sharedClient() {
+  static WiFiClientSecure client;
+  static bool initialized = false;
+  if (!initialized) {
+    // setInsecure() skips TLS certificate validation — same tradeoff
+    // already made for the Geocoding client in geocode.cpp.
+    client.setInsecure();
+    initialized = true;
+  }
+  return client;
+}
+
 // Shared GET + JSON-parse for all three endpoints below. Returns true and
 // leaves `doc` populated with the parsed body on success (HTTP 200); on
 // any other outcome fills outError/outRetryable and returns false.
 bool getJson(const String &url, JsonDocument &doc, String &outError, bool &outRetryable) {
-  // setInsecure() skips TLS certificate validation — same tradeoff already
-  // made for the Geocoding client in geocode.cpp, not repeated there.
-  WiFiClientSecure client;
-  client.setInsecure();
+  WiFiClientSecure &client = sharedClient();
 
-  HTTPClient http;
+  static HTTPClient http;
+  http.setReuse(true);
   if (!http.begin(client, url)) {
     outError = "Could not start the request.";
     outRetryable = true;
@@ -87,10 +109,17 @@ bool getJson(const String &url, JsonDocument &doc, String &outError, bool &outRe
     return false;
   }
 
-  const DeserializationError err = deserializeJson(doc, http.getStream());
+  // Not http.getStream(): Weather API responses come back with chunked
+  // transfer-encoding (no fixed Content-Length), and getStream() hands
+  // back the raw transport stream, chunk-size markers and all — that's
+  // what "InvalidInput" from deserializeJson() turned out to be, confirmed
+  // on real hardware. getString() does the dechunking first.
+  const String body = http.getString();
   http.end();
+  const DeserializationError err = deserializeJson(doc, body);
   if (err) {
     Serial.printf("[weather] JSON parse failed: %s\n", err.c_str());
+    Serial.printf("[weather] body: %s\n", body.c_str());
     outError = "Bad response from Google.";
     outRetryable = true;
     return false;

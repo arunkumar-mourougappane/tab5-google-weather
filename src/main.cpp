@@ -257,6 +257,22 @@ void resolveLocationIfNeeded() {
   }
 }
 
+// Gives the esp-hosted SDIO link (ESP32-P4 <-> C6 co-processor, see
+// docs/hardware.md) a moment to settle between back-to-back HTTPS requests.
+// Same shape as the pauses already used for the "just-changed radio state
+// isn't instantly ready" class of issue in resolveLocationIfNeeded() and
+// the WiFi-scan retry loop — firing HTTPS requests immediately back-to-back
+// crashed the SDIO driver with `assert failed: sdio_rx_get_buffer` on real
+// hardware; this hasn't been root-caused, just worked around.
+void settleWifiLink() {
+  Serial.printf("[main] free heap: %u\n", ESP.getFreeHeap());
+  const uint32_t start = millis();
+  while (millis() - start < 750) {
+    pumpLvgl();
+    delay(20);
+  }
+}
+
 // No dashboard UI yet (see docs/rendering.md's "Open problem" section on
 // hero-scale fonts) — this just proves the weather.googleapis.com client
 // (src/weather.cpp) end-to-end on real hardware by fetching current
@@ -265,6 +281,8 @@ void resolveLocationIfNeeded() {
 // resolveLocationIfNeeded(): only retries when fetchCurrentConditions()
 // itself says the failure was transient.
 void fetchAndShowCurrentConditions() {
+  settleWifiLink();
+
   showStatusScreen("Getting weather", configStore.locationQuery().c_str(), /*loading=*/true);
 
   CurrentConditions conditions;
@@ -299,6 +317,48 @@ void fetchAndShowCurrentConditions() {
   showStatusScreen(title, subtitle, /*loading=*/false);
 }
 
+// Temporary: no hourly/daily UI exists yet (no dashboard yet at all — see
+// fetchAndShowCurrentConditions() above), so this just exercises
+// fetchHourlyForecast()/fetchDailyForecast() once at boot and logs what
+// came back, to confirm the same getJson() chunked-response fix that fixed
+// current conditions also covers these two endpoints on real hardware.
+// Remove once the real dashboard consumes these instead of Serial.
+void fetchAndLogForecasts() {
+  settleWifiLink();
+
+  HourlyForecastPoint hourly[kMaxHourlyPoints];
+  size_t hourlyCount = 0;
+  String hourlyError;
+  bool hourlyRetryable = true;
+  if (fetchHourlyForecast(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
+                           configStore.unitsImperial(), hourly, hourlyCount, hourlyError, hourlyRetryable)) {
+    for (size_t i = 0; i < hourlyCount; i++) {
+      Serial.printf("[main] hourly[%u]: %s %d %s\n", static_cast<unsigned>(i),
+                    hourly[i].displayDateTime.c_str(), static_cast<int>(hourly[i].temperature),
+                    hourly[i].condition.type.c_str());
+    }
+  } else {
+    Serial.printf("[main] hourly forecast failed: %s\n", hourlyError.c_str());
+  }
+
+  settleWifiLink();
+
+  DailyForecastPoint daily[kMaxDailyPoints];
+  size_t dailyCount = 0;
+  String dailyError;
+  bool dailyRetryable = true;
+  if (fetchDailyForecast(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
+                          configStore.unitsImperial(), daily, dailyCount, dailyError, dailyRetryable)) {
+    for (size_t i = 0; i < dailyCount; i++) {
+      Serial.printf("[main] daily[%u]: %s %d/%d %s\n", static_cast<unsigned>(i), daily[i].displayDate.c_str(),
+                    static_cast<int>(daily[i].maxTemperature), static_cast<int>(daily[i].minTemperature),
+                    daily[i].daytimeCondition.type.c_str());
+    }
+  } else {
+    Serial.printf("[main] daily forecast failed: %s\n", dailyError.c_str());
+  }
+}
+
 }  // namespace
 
 void setup() {
@@ -320,6 +380,7 @@ void setup() {
   connectWifiOrRetryBoot();
   resolveLocationIfNeeded();
   fetchAndShowCurrentConditions();
+  fetchAndLogForecasts();
 }
 
 void loop() {

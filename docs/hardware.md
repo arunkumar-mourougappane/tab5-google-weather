@@ -141,6 +141,38 @@ down even after being disproven: switching to the correctly-pinned dedicated
 board (previous section) did *not* fix scanning, ruling it out. The actual
 fix was unrelated to pin correctness entirely — see above.
 
+### Reconnecting TLS too many times in a row crashes the SDIO driver
+
+Confirmed on real hardware while bringing up the Weather API client
+([google-weather-api.md](google-weather-api.md), `src/weather.cpp`): making
+three back-to-back HTTPS requests to the same host, each with its own fresh
+`WiFiClientSecure`/`HTTPClient` (connect, TLS handshake, request, `end()`,
+destroy, repeat), reliably crashed on the *third* connection with
+`assert failed: sdio_rx_get_buffer sdio_drv.c:953 (*buf)` — a hard fault
+inside the esp-hosted SDIO driver itself, not application code.
+
+Two plausible causes were ruled out before landing on the real one:
+
+- **Not resource exhaustion.** `ESP.getFreeHeap()` logged right before the
+  crash showed >100 KB free both times it happened.
+- **Not timing/settling.** Adding a 750ms pause (pumping LVGL, same shape as
+  the post-mode-switch delay that helped with `WiFi.scanNetworks()` above)
+  between each request made no difference — crashed at the exact same point
+  regardless.
+
+What did fix it: reusing a single `WiFiClientSecure` + `HTTPClient` (with
+`http.setReuse(true)`) across all three calls instead of tearing down and
+reconnecting per request. All three endpoints are the same host
+(`weather.googleapis.com`), so there's no reason not to keep the connection
+open between them anyway — this cut three separate TLS
+handshake+teardown cycles down to one. Confirmed working end-to-end on
+device after the change. Root cause not fully understood (this reads as a
+fixed-size SDIO RX buffer pool in the vendored `esp-hosted` driver not being
+released cleanly on rapid disconnect/reconnect, but that's inference from
+the symptom, not something traced into the driver itself) — reusing the
+connection is a real fix for this project's access pattern, not confirmed to
+generalize to, say, hitting several different hosts back-to-back.
+
 Two other things worth knowing before debugging WiFi issues on this hardware:
 
 - The C6 runs its own **`esp_hosted` firmware image**, flashed to a dedicated
