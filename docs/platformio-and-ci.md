@@ -11,16 +11,43 @@ platform = https://github.com/pioarduino/platform-espressif32.git#55.03.35
 board = esp32-p4-evboard
 board_build.mcu = esp32p4
 board_build.flash_mode = qio
+board_build.partitions = default_16MB.csv
+board_upload.flash_size = 16MB
 framework = arduino
 upload_speed = 1500000
 monitor_speed = 115200
 build_flags =
     -DBOARD_HAS_PSRAM
+    -DARDUINO_USB_CDC_ON_BOOT=1
 lib_deps =
     https://github.com/M5Stack/M5GFX.git
     https://github.com/M5Stack/M5Unified.git
     lvgl/lvgl@^9.2
 ```
+
+**Verified the hard way (Serial vs. the console):** without
+`-DARDUINO_USB_CDC_ON_BOOT=1`, Arduino's `Serial` global silently maps to a
+plain UART0 that isn't wired to the USB port at all — our own
+`Serial.print()`/`printf()` calls go nowhere, and nothing typed into a
+monitor reaches the device either. This is easy to misdiagnose as "no serial
+output at all," because it isn't: ESP-IDF's own boot/panic log (`E (941)
+...`-style lines) travels over a *separate* path — the native USB
+Serial/JTAG controller's console — which keeps working regardless and is
+what a monitor tool actually connects to by default. The flag routes
+Arduino's `Serial` onto that same controller instead of the disconnected
+UART0, unifying the two.
+
+**Verified the hard way:** the board's own `esp32-p4-evboard.json` declares
+`"arduino": {"partitions": "default_16MB.csv"}` — but PlatformIO's builder
+only reads a partitions filename from `build.partitions`, not `arduino.partitions`,
+so that setting is silently ignored. Without `board_build.partitions` set
+explicitly, the build falls back to a ~1.25MB default app partition — plenty
+for the bare display/touch scaffold, but firmware linking in WiFi + TLS +
+JSON + a QR encoder (the provisioning feature) hit 1.6MB and the build failed
+at the link step with `program size ... greater than maximum allowed`, not a
+compile error. `default_16MB.csv` gives two 6.25MB OTA app slots instead —
+matches the Tab5's actual 16MB flash and leaves real headroom for the
+dashboard/weather client still to come.
 
 Verified requirement: the pinned `#55.03.35` tag's `platform.json` declares
 `"engines": {"platformio": ">=6.1.18"}` — PlatformIO Core 6.1.19 (the version on

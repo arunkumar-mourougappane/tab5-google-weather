@@ -24,12 +24,13 @@ We'll go with **(2)** for v1 and document (3) as a follow-up in the README.
 
 The key itself isn't compiled into firmware — it's entered once through the
 on-device provisioning flow (device opens its own AP + setup page on first
-boot; see [mockups/provisioning.html](mockups/provisioning.html)) and stored
-in flash (NVS), the same as the WiFi credentials and location below. That
-supersedes an earlier plan to hardcode everything in a `secrets.h` at build
-time — compile-time secrets don't let a non-developer set this device up, and
-provisioning firmware is barely more work than a captive-portal WiFi setup
-alone, which the device needs regardless.
+boot; mockup: [mockups/provisioning.html](mockups/provisioning.html),
+implemented in `src/provisioning.cpp`) and stored in flash (NVS, via
+`ConfigStore` in `src/config_store.cpp`), the same as the WiFi credentials and
+location below. That supersedes an earlier plan to hardcode everything in a
+`secrets.h` at build time — compile-time secrets don't let a non-developer
+set this device up, and provisioning firmware is barely more work than a
+captive-portal WiFi setup alone, which the device needs regardless.
 
 ## Endpoints used
 
@@ -69,8 +70,9 @@ formats the numbers it's given.
 ## Location
 
 The Weather API takes raw lat/lon only — no geocoding built in, and the Tab5
-has no GPS. The provisioning page (see
-[mockups/provisioning.html](mockups/provisioning.html)) collects a "City or
+has no GPS. The provisioning page (mockup:
+[mockups/provisioning.html](mockups/provisioning.html), implementation:
+`src/provisioning.cpp` + `include/provisioning_page.h`) collects a "City or
 ZIP" string instead of asking for coordinates, since that's what a person
 actually knows.
 
@@ -78,15 +80,15 @@ That string still has to become a lat/lon somehow. The device is in AP mode
 (not yet on the internet) while the setup form is being filled out, so
 geocoding can't happen until *after* it joins the home WiFi with the
 credentials just given to it. Concretely: save WiFi + city text + API key →
-join WiFi → **geocode the city text once** (Google's
+join WiFi (`connectWifiOrRetryBoot()` in `src/main.cpp`) → **geocode the city
+text once** (`geocodeLocation()` in `src/geocode.cpp`, calling Google's
 [Geocoding API](https://developers.google.com/maps/documentation/geocoding) —
 a separate Maps Platform API from Weather, needs its own enablement, shares
-free tier terms) → store the resulting lat/lon → start polling
-`weather.googleapis.com` with that. Not re-geocoded on every refresh, only at
-setup. A location change means re-running setup — the right tradeoff for
-something wall-mounted, not portable. This step slots into the "Syncing"
-device state in [mockups/status.html](mockups/status.html), just ahead of the
-first weather fetch.
+free tier terms) → store the resulting lat/lon in NVS via `ConfigStore`
+(`src/config_store.cpp`) → start polling `weather.googleapis.com` with that.
+Not re-geocoded on every refresh, only once (`ConfigStore::hasLocation()`
+gates it). A location change means re-running setup — the right tradeoff for
+something wall-mounted, not portable.
 
 ## Quota / pricing
 

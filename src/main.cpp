@@ -1,15 +1,37 @@
-// Firmware scaffold for the Tab5 weather dashboard.
+// Firmware for the Tab5 weather dashboard.
 //
-// This wires up the pieces documented in docs/rendering.md — M5Unified for
-// board/display/touch init, LVGL driven through M5GFX with partial,
-// PSRAM-backed draw buffers and a DMA flush — and shows a placeholder
-// screen. No WiFi, provisioning, or weather client yet; those land on top
-// of this once the display path is confirmed working on real hardware.
+// Boot flow: bring up display + touch (docs/rendering.md) -> if not yet
+// provisioned, run first-run setup (AP + web page, docs/mockups/
+// provisioning.html) and reboot -> join the saved Wi-Fi -> geocode the
+// saved location once if we haven't already (docs/google-weather-api.md)
+// -> [dashboard/weather client not built yet — placeholder "connected"
+// screen for now].
 
 #include <M5Unified.h>
+#include <WiFi.h>
 #include <lvgl.h>
 
+#include "config_store.h"
+#include "geocode.h"
+#include "provisioning.h"
+
 namespace {
+
+// The ESP32-P4 has no radio of its own — WiFi comes from an onboard
+// ESP32-C6 co-processor, reached over a fixed set of SDIO GPIOs (see
+// docs/hardware.md). The generic `esp32-p4-evboard` board profile we build
+// against doesn't know Tab5's specific wiring to that chip, so without this
+// call WiFi.mode()/begin()/softAP() all fail outright — confirmed on real
+// hardware: every attempt logs a repeating `sdmmc_init_ocr` failure and
+// `ESP-Hosted link not yet up`, from the SDIO transport never coming up at
+// all, not from anything in our own WiFi/AP code. Pins per M5Stack's own
+// Tab5 WiFi docs (docs.m5stack.com/en/arduino/m5tab5/wifi) — must run
+// before any WiFi.* call, in either boot path (provisioning's AP mode or
+// normal station mode).
+void configureWifiPins() {
+  WiFi.setPins(/*clk=*/GPIO_NUM_12, /*cmd=*/GPIO_NUM_13, /*d0=*/GPIO_NUM_11, /*d1=*/GPIO_NUM_10,
+               /*d2=*/GPIO_NUM_9, /*d3=*/GPIO_NUM_8, /*rst=*/GPIO_NUM_15);
+}
 
 // The Tab5 panel is native 720x1280 (portrait); M5GFX must be told to
 // rotate into landscape before we ask it for width()/height(). Screen
@@ -86,47 +108,122 @@ void initDisplay() {
   lv_indev_set_read_cb(touch, lvglTouchReadCb);
 }
 
-void buildPlaceholderUi() {
+// Reused across every boot-time status screen (connecting, geocoding,
+// errors, and the final placeholder) so we're not creating a new lv_obj
+// screen per state. Plain ASCII punctuation only — LVGL's built-in
+// Montserrat fonts don't include Latin-1 Supplement glyphs like
+// middle-dot/em-dash, so those rendered as tofu boxes early on.
+void showStatusScreen(const char *title, const char *subtitle) {
   lv_obj_t *screen = lv_screen_active();
+  lv_obj_clean(screen);
   lv_obj_set_style_bg_color(screen, lv_color_hex(0x121417), 0);
   lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
-  lv_obj_t *title = lv_label_create(screen);
-  // Plain ASCII punctuation only: LVGL's built-in Montserrat fonts don't
-  // include Latin-1 Supplement glyphs like middle-dot/em-dash, so those
-  // rendered as tofu boxes. A custom font would fix that properly, but
-  // isn't worth it for placeholder text.
-  lv_label_set_text(title, "TAB5 - WEATHER");
-  lv_obj_set_style_text_color(title, lv_color_hex(0xD99A4E), 0);
-  lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
-  lv_obj_align(title, LV_ALIGN_CENTER, 0, -16);
+  lv_obj_t *titleLabel = lv_label_create(screen);
+  lv_label_set_text(titleLabel, title);
+  lv_obj_set_style_text_color(titleLabel, lv_color_hex(0xD99A4E), 0);
+  lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_20, 0);
+  lv_obj_align(titleLabel, LV_ALIGN_CENTER, 0, -16);
 
-  lv_obj_t *subtitle = lv_label_create(screen);
-  lv_label_set_text(subtitle, "Firmware scaffold - display + touch only.\nSee docs/mockups/ for the planned screens.");
-  lv_obj_set_style_text_color(subtitle, lv_color_hex(0xA89E8C), 0);
-  lv_obj_set_style_text_align(subtitle, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align(subtitle, LV_ALIGN_CENTER, 0, 24);
+  lv_obj_t *subtitleLabel = lv_label_create(screen);
+  lv_label_set_text(subtitleLabel, subtitle);
+  lv_obj_set_style_text_color(subtitleLabel, lv_color_hex(0xA89E8C), 0);
+  lv_obj_set_style_text_align(subtitleLabel, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_width(subtitleLabel, lv_pct(70));
+  lv_obj_set_style_text_align(subtitleLabel, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_align(subtitleLabel, LV_ALIGN_CENTER, 0, 24);
+}
+
+void pumpLvgl() {
+  const uint32_t now = millis();
+  lv_tick_inc(now - lastTickMs);
+  lastTickMs = now;
+  lv_timer_handler();
+}
+
+ConfigStore configStore;
+
+void connectWifiOrRetryBoot() {
+  showStatusScreen("Connecting to Wi-Fi",
+                    ("Joining \"" + configStore.wifiSsid() + "\"...").c_str());
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(configStore.wifiSsid().c_str(), configStore.wifiPassword().c_str());
+
+  constexpr uint32_t kWifiTimeoutMs = 20000;
+  const uint32_t start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < kWifiTimeoutMs) {
+    pumpLvgl();
+    delay(50);
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    showStatusScreen("Could not join Wi-Fi", "Restarting to try again...");
+    const uint32_t retryStart = millis();
+    while (millis() - retryStart < 3000) {
+      pumpLvgl();
+      delay(20);
+    }
+    ESP.restart();
+  }
+}
+
+void resolveLocationIfNeeded() {
+  if (configStore.hasLocation()) {
+    return;
+  }
+
+  showStatusScreen("Finding your location", configStore.locationQuery().c_str());
+
+  float lat = 0.0f;
+  float lon = 0.0f;
+  if (geocodeLocation(configStore.locationQuery(), configStore.apiKey(), lat, lon)) {
+    configStore.saveLocation(lat, lon);
+    return;
+  }
+
+  showStatusScreen("Could not resolve that location",
+                    "Double check the city/ZIP entered during setup, then power-cycle to retry.");
+  const uint32_t start = millis();
+  while (millis() - start < 4000) {
+    pumpLvgl();
+    delay(20);
+  }
+}
+
+void showConnectedPlaceholder() {
+  char subtitle[192];
+  snprintf(subtitle, sizeof(subtitle), "Connected. Weather for %s (%.3f, %.3f).\nDashboard not built yet.",
+           configStore.locationQuery().c_str(), configStore.latitude(), configStore.longitude());
+  showStatusScreen("TAB5 - WEATHER", subtitle);
 }
 
 }  // namespace
 
 void setup() {
+  Serial.begin(115200);
+
   auto cfg = M5.config();
   M5.begin(cfg);
 
+  configureWifiPins();
   initDisplay();
-  buildPlaceholderUi();
-
   lastTickMs = millis();
+
+  configStore.begin();
+
+  if (!configStore.isProvisioned()) {
+    runProvisioning(configStore);
+    ESP.restart();
+  }
+
+  connectWifiOrRetryBoot();
+  resolveLocationIfNeeded();
+  showConnectedPlaceholder();
 }
 
 void loop() {
   M5.update();
-
-  const uint32_t now = millis();
-  lv_tick_inc(now - lastTickMs);
-  lastTickMs = now;
-
-  lv_timer_handler();
+  pumpLvgl();
   delay(5);
 }

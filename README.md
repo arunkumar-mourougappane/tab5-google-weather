@@ -18,8 +18,8 @@ Early firmware — the PlatformIO project builds and brings up display + touch o
 - [x] PlatformIO project scaffold ([platformio.ini](platformio.ini))
 - [x] GitHub Actions firmware build CI ([.github/workflows/build.yml](.github/workflows/build.yml))
 - [x] Display + touch (LVGL over M5GFX) — confirmed on a real Tab5 ([docs/rendering.md](docs/rendering.md) for the rotation/color-format gotchas)
-- [ ] First-run provisioning (AP + setup web page)
-- [ ] Google Weather API client
+- [ ] First-run provisioning (AP + setup web page) — implemented (`src/provisioning.cpp`, `src/config_store.cpp`, `src/geocode.cpp`), compiles clean; not yet run on real hardware
+- [ ] Google Weather API client (current conditions + hourly + daily)
 - [ ] Dashboard/hourly/daily/alert screens wired to live data
 
 ## Building
@@ -37,14 +37,14 @@ pio device monitor           # serial console
 
 ## Screens
 
-| | |
-|---|---|
-| **Dashboard** | Current conditions, 8-hour strip, 7-day outlook — the always-on default |
-| **Hourly detail** | 16-hour temperature/precipitation chart |
-| **7-day forecast** | Full week, day/night split per row, sunrise/sunset/moon phase |
-| **Boot / sync / offline** | Wi-Fi connect, first fetch, and a graceful fallback to stale data when the network or API is unreachable |
-| **Severe alert** | Alert banner over the dimmed dashboard, not a full-screen takeover |
-| **First-run provisioning** | The device's own access point + setup screen, and the phone-facing setup page it serves |
+|                            |                                                                                                          |
+|----------------------------|----------------------------------------------------------------------------------------------------------|
+| **Dashboard**              | Current conditions, 8-hour strip, 7-day outlook — the always-on default                                  |
+| **Hourly detail**          | 16-hour temperature/precipitation chart                                                                  |
+| **7-day forecast**         | Full week, day/night split per row, sunrise/sunset/moon phase                                            |
+| **Boot / sync / offline**  | Wi-Fi connect, first fetch, and a graceful fallback to stale data when the network or API is unreachable |
+| **Severe alert**           | Alert banner over the dimmed dashboard, not a full-screen takeover                                       |
+| **First-run provisioning** | The device's own access point + setup screen, and the phone-facing setup page it serves                  |
 
 Open [docs/mockups/index.html](docs/mockups/index.html) locally, or browse the [live gallery](https://arunkumar-mourougappane.github.io/tab5-google-weather/) — every screen is interactive, including a day/night preview toggle.
 
