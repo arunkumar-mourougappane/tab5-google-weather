@@ -16,36 +16,130 @@ dumb WiFi/BT adapter; the P4 drives it through `esp_wifi_remote`, so from
 application code (Arduino `WiFi.h`) it behaves like a normal on-chip WiFi stack
 *once the link is up*.
 
-**Corrected after testing on real hardware** — this section previously claimed
-`WiFi.begin(ssid, pass)` "works unmodified" out of the box on the
-`esp32-p4-evboard` board target. It doesn't. That board profile is generic (the
-Espressif P4 EV-board reference design, not Tab5-specific) and doesn't know
-which GPIOs Tab5 actually wires to the C6's SDIO bus. Without telling it,
-every `WiFi.mode()`/`begin()`/`softAP()` call fails outright — observed as a
-repeating `sdmmc_init_ocr: send_op_cond (1) returned 0x107` /
-`ensure_slave_bus_ready failed` / `ESP-Hosted link not yet up` cascade in the
-serial log, ending in `esp_wifi_init: ESP_FAIL`. (That `sdmmc`/`sdio_wrapper`
-naming is just the driver stack `esp-hosted` reuses from SD-card support —
-nothing to do with an actual SD card or the Tab5's card slot.) Fix, per
-M5Stack's own Tab5 WiFi docs, called once before any `WiFi.*` use in either
-boot path (`configureWifiPins()` in `src/main.cpp`):
+### The real fix: use the dedicated board, not the generic one
 
-```cpp
-WiFi.setPins(/*clk=*/GPIO_NUM_12, /*cmd=*/GPIO_NUM_13, /*d0=*/GPIO_NUM_11,
-             /*d1=*/GPIO_NUM_10, /*d2=*/GPIO_NUM_9, /*d3=*/GPIO_NUM_8,
-             /*rst=*/GPIO_NUM_15);
-```
+This project started on `board = esp32-p4-evboard` (the Espressif P4 EV-board
+reference design), because at the time no Tab5-specific board profile seemed
+to exist. **One does: `board = m5stack-tab5-p4`** (variant `m5stack_tab5`),
+already present in this project's pinned `pioarduino` install — no platform
+version bump needed, just the board name. Found by comparing against a
+sibling project on the same hardware that had WiFi working cleanly with none
+of the workarounds below.
 
-Compiles clean against this project's `WiFi@3.3.5`; not yet confirmed this
-alone is sufficient on our unit (community reports on the same board profile
-are mixed — some needed this and nothing else, some report it still not
-working and had to rebuild `arduino-esp32` via Espressif's online Library
-Builder with Tab5-specific SDIO config baked in). If `setPins()` doesn't
-resolve it, that heavier rebuild — or restoring the C6's factory `esp-hosted`
-firmware via M5Stack's
-[recovery tool](https://docs.m5stack.com/en/guide/restore_factory/m5tab5_c6_wifi)
-in case it's corrupted/mismatched rather than a host-side pin issue — are the
-next things to try, in that order.
+The generic board's variant (`esp32p4`) turned out to be the actual root
+cause of everything in this section, not just "doesn't know Tab5's wiring."
+Both variants define `BOARD_HAS_SDIO_ESP_HOSTED` with a *baked-in, static*
+`sdio_pin_config_t` (`esp32-hal-hosted.c`) — but with different pins:
+
+| Pin | `esp32p4` (generic, wrong for Tab5) | `m5stack_tab5` (correct) |
+|---|---|---|
+| CLK | 18 | 12 |
+| CMD | 19 | 13 |
+| D0–D3 | 14, 15, 16, 17 | 11, 10, 9, 8 |
+| RESET | 54 | 15 |
+
+That struct initializes before `setup()` ever runs. A runtime
+`WiFi.setPins()` call (which is what this project used, and what M5Stack's
+own Tab5 WiFi docs recommend for the generic board) overrides it *later*,
+which got WiFi limping — softAP came up, basic HTTP served fine — without a
+`setPins()` call ever being needed at all on the dedicated board, matching
+the working reference project exactly. Its `extra_flags` in
+`m5stack-tab5-p4.json` also already bake in `BOARD_HAS_PSRAM`,
+`ARDUINO_USB_CDC_ON_BOOT=1`, and `ARDUINO_USB_MODE=1`, removing three more
+manual `build_flags` this project had accumulated one hardware-debugging
+session at a time (see [platformio-and-ci.md](platformio-and-ci.md)).
+
+**Worth being precise about what this did and didn't fix, confirmed by
+reflashing:** the board switch alone did *not* fix `WiFi.scanNetworks()` —
+still deterministic `-2` afterward, identical to the generic board. The
+tempting theory at the time ("a `setPins()` override landing after a
+wrong-pinned struct's static init would plausibly be marginal enough to
+explain a working AP but a failing scan") turned out to be wrong, or at
+least incomplete. What actually fixed scan is the *platform version* bump
+below — the board switch is real and worth keeping (matches the working
+reference, removes redundant manual flags, is the technically correct
+profile for this hardware regardless), it's just a different fix for a
+different problem than scanning.
+
+### What actually fixed scanning: the platform version, not the board
+
+Comparing further against the working reference project surfaced two more
+differences: its `platformio.ini` pins `platform =
+.../platform-espressif32.git#55.03.39` (ours: `#55.03.35`) and sets
+`-DCORE_DEBUG_LEVEL=3` (ours: unset).
+
+The debug-level difference mattered immediately: with it enabled, the boot
+log gained `[esp32-hal-hosted.c]` lines this project's earlier investigation
+never saw — `Host firmware version: 2.12.8`, `Slave firmware version:
+1.4.1`, `Version on Host is NEWER than version on co-processor`. Earlier in
+this investigation, the *absence* of that exact warning in our boot log was
+read as ruling out host/co-processor version skew as a cause. That
+conclusion was never safe to draw — `CORE_DEBUG_LEVEL` gates ESP-IDF's
+`[I]`/`[W]`-level logs at compile time, not just display; too low a level
+and lines like this don't exist in the binary at all, regardless of what's
+actually happening at runtime. (The reference project's own boot log shows
+this same warning and scans successfully anyway, so version skew itself
+isn't what blocks scanning either — but it means "the log doesn't show X"
+was never valid evidence of anything here without first checking the debug
+level could show X in the first place.)
+
+The platform pin was the real fix. `#55.03.35` is pinned to ESP-IDF v5.5.1
+specifically to avoid the MIPI-DSI backlight flicker regression documented
+below as introduced in IDF 5.5.2 — every `pioarduino` tag after `.35`,
+`.36` onward, jumps straight to IDF 5.5.2+ and stays there (`.39` is IDF
+5.5.4). Bumping to `.39` — confirmed on real hardware — **fixes
+`WiFi.scanNetworks()` outright** (real SSIDs returned, not just a
+non-negative count) **with no backlight flicker observed on this unit**,
+despite being past the version documented to introduce it. Accepted as a
+deliberate tradeoff, not a free fix: flicker regressions can be
+panel-revision-dependent (see the ST7123/ST7121 driver-IC migration note
+below), so "clean on this unit" isn't a guarantee for every Tab5 out there.
+If flicker ever shows up after a future platform bump, `#55.03.35` is the
+documented-safe fallback — at the cost of `WiFi.scanNetworks()` going back
+to broken, which is why the manual SSID entry field in provisioning stays
+the primary path either way, not treated as a fallback for an edge case.
+
+### Investigation history (logged against the generic `esp32-p4-evboard`, `#55.03.35`)
+
+Without any pin configuration at all, every `WiFi.mode()`/`begin()`/`softAP()`
+call failed outright — a repeating `sdmmc_init_ocr: send_op_cond (1)
+returned 0x107` / `ensure_slave_bus_ready failed` / `ESP-Hosted link not yet
+up` cascade in the serial log, ending in `esp_wifi_init: ESP_FAIL`. (That
+`sdmmc`/`sdio_wrapper` naming is just the driver stack `esp-hosted` reuses
+from SD-card support — nothing to do with an actual SD card or the Tab5's
+card slot.) `WiFi.setPins()` with the pins above got past that, to a point.
+
+From there, `WiFi.scanNetworks()` specifically never worked, through three
+rounds of narrowing down the cause:
+1. *Suspected AP+STA contention* — scanning while the softAP was already up
+   and serving the setup page gave inconsistent results (empty once, then
+   `WIFI_SCAN_FAILED` twice in a row, same device, no pattern). Worked
+   around by scanning once in plain STA mode *before* `WiFi.softAP()` is
+   ever called, caching the result for the provisioning session instead of
+   rescanning per request — this part is worth keeping regardless of the
+   board-profile fix, since avoiding needless concurrent radio use is just
+   good practice.
+2. *Suspected radio-not-ready timing* — even scanning before the AP existed,
+   the very first attempt right after `WiFi.mode(WIFI_STA)` came back
+   "completed, 0 networks" with no settling time at all. Added a 200ms delay
+   after the mode switch and started retrying on a suspicious `0` result,
+   not just an outright negative one.
+3. With both of those addressed, the result became **deterministic**: `-2`
+   (`WIFI_SCAN_FAILED`) on all 3 retry attempts, every time. Checked for the
+   one documented ESP32-P4+`esp-hosted` failure signature that fits — host/
+   co-processor firmware version skew, logged as `"Version on Host is NEWER
+   than version on co-processor"` — not present in the boot log, ruling that
+   out specifically.
+
+At the time, this read as "basic WiFi works, scan specifically and
+permanently doesn't, for a reason invisible without `esp-hosted` internals
+access." The tempting explanation — a `WiFi.setPins()` override landing
+after a wrong-pinned struct's static init, plausible enough for simple
+traffic but not a scan's RPC round-trip — was a reasonable hypothesis given
+what was known at the time, and is exactly the kind of theory worth writing
+down even after being disproven: switching to the correctly-pinned dedicated
+board (previous section) did *not* fix scanning, ruling it out. The actual
+fix was unrelated to pin correctness entirely — see above.
 
 Two other things worth knowing before debugging WiFi issues on this hardware:
 
@@ -56,21 +150,6 @@ Two other things worth knowing before debugging WiFi issues on this hardware:
 - SDIO is a single shared channel (40 MHz + HT20 tops out around ~36 Mbps
   real-world) multiplexed between WiFi data and RPC control traffic. Plenty for
   a weather API poll every few minutes; not a channel to worry about saturating.
-- **Concurrent AP+STA scan is flaky.** Provisioning's network picker
-  (`scanNetworksOnce()` in `src/provisioning.cpp`) originally called
-  `WiFi.scanNetworks()` on demand, with the softAP already up and actively
-  serving the setup page. On real hardware this was unreliable — the exact
-  same device returned an empty result once, then `WIFI_SCAN_FAILED` twice in
-  a row on the next two attempts, no pattern to it. Read as contention for
-  the C6's radio/SDIO link between AP beaconing/HTTP traffic and a concurrent
-  STA scan, not a real "zero networks in range" (that shared-channel
-  multiplexing above is presumably part of it too, though we didn't isolate
-  which contended resource specifically). Worked around, not root-caused:
-  scan once, in plain STA mode, *before* `WiFi.softAP()` is ever called, and
-  serve that cached result for the rest of the provisioning session rather
-  than rescanning per request. The setup page also grew a manual "type the
-  SSID" fallback field for the same reason — a picker that depends on a scan
-  we've already seen fail intermittently shouldn't be the only way in.
 
 ## Display
 

@@ -180,9 +180,18 @@ void handleRoot() { server.send_P(200, "text/html", kProvisioningPageHtml); }
 // since even the uncontended scan wasn't perfectly reliable in testing.
 void scanNetworksOnce() {
   WiFi.mode(WIFI_STA);
+  // Give the radio a moment after the mode switch before the first scan —
+  // confirmed on real hardware that attempt 0 came back a clean "completed,
+  // 0 networks" (not a failure) immediately after WIFI_STA was set, with no
+  // settling time at all beforehand.
+  delay(200);
 
   int count = -1;
-  for (int attempt = 0; attempt < 3 && count < 0; attempt++) {
+  // Retry on <= 0, not just < 0: a suspicious "completed but empty" result
+  // deserves the same skepticism as an outright failure here, not just a
+  // negative one — see above. Three attempts either way; a genuinely empty
+  // area just costs ~600ms extra at worst.
+  for (int attempt = 0; attempt < 3 && count <= 0; attempt++) {
     if (attempt > 0) delay(300);
     count = WiFi.scanNetworks();
     Serial.printf("[provisioning] scanNetworks() attempt %d -> %d\n", attempt, count);

@@ -107,7 +107,7 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
   fetch('/scan').then(r => r.json()).then(list => {
     const wrap = document.getElementById('networks');
     wrap.innerHTML = '';
-    if (!list.length) { wrap.innerHTML = '<div id="scanning">No networks found &mdash; type the name below instead.</div>'; return; }
+    if (!list.length) { wrap.innerHTML = '<div id="scanning">Network scanning isn\'t available on this display &mdash; type your network\'s name below instead.</div>'; return; }
     list.forEach((n, i) => {
       const row = document.createElement('div');
       row.className = 'net' + (i === 0 ? ' sel' : '');

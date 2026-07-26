@@ -17,22 +17,6 @@
 
 namespace {
 
-// The ESP32-P4 has no radio of its own — WiFi comes from an onboard
-// ESP32-C6 co-processor, reached over a fixed set of SDIO GPIOs (see
-// docs/hardware.md). The generic `esp32-p4-evboard` board profile we build
-// against doesn't know Tab5's specific wiring to that chip, so without this
-// call WiFi.mode()/begin()/softAP() all fail outright — confirmed on real
-// hardware: every attempt logs a repeating `sdmmc_init_ocr` failure and
-// `ESP-Hosted link not yet up`, from the SDIO transport never coming up at
-// all, not from anything in our own WiFi/AP code. Pins per M5Stack's own
-// Tab5 WiFi docs (docs.m5stack.com/en/arduino/m5tab5/wifi) — must run
-// before any WiFi.* call, in either boot path (provisioning's AP mode or
-// normal station mode).
-void configureWifiPins() {
-  WiFi.setPins(/*clk=*/GPIO_NUM_12, /*cmd=*/GPIO_NUM_13, /*d0=*/GPIO_NUM_11, /*d1=*/GPIO_NUM_10,
-               /*d2=*/GPIO_NUM_9, /*d3=*/GPIO_NUM_8, /*rst=*/GPIO_NUM_15);
-}
-
 // The Tab5 panel is native 720x1280 (portrait); M5GFX must be told to
 // rotate into landscape before we ask it for width()/height(). Screen
 // dimensions are read back from M5GFX rather than hardcoded, so LVGL and
@@ -206,7 +190,6 @@ void setup() {
   auto cfg = M5.config();
   M5.begin(cfg);
 
-  configureWifiPins();
   initDisplay();
   lastTickMs = millis();
 

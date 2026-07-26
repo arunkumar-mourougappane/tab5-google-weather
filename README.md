@@ -11,14 +11,14 @@ A weather dashboard for the [M5Stack Tab5](https://docs.m5stack.com/en/core/Tab5
 
 ## Status
 
-Early firmware — the PlatformIO project builds and brings up display + touch on real hardware; the actual weather app isn't wired up yet.
+Early firmware — display, touch, and first-run WiFi provisioning are all confirmed working on real hardware; the actual weather app isn't wired up yet.
 
 - [x] Hardware, API, rendering, and build-tooling research ([docs/](docs/))
 - [x] UI mockups for all six screens ([docs/mockups/](docs/mockups/))
 - [x] PlatformIO project scaffold ([platformio.ini](platformio.ini))
 - [x] GitHub Actions firmware build CI ([.github/workflows/build.yml](.github/workflows/build.yml))
 - [x] Display + touch (LVGL over M5GFX) — confirmed on a real Tab5 ([docs/rendering.md](docs/rendering.md) for the rotation/color-format gotchas)
-- [ ] First-run provisioning (AP + setup web page) — implemented (`src/provisioning.cpp`, `src/config_store.cpp`, `src/geocode.cpp`), compiles clean; not yet run on real hardware
+- [x] First-run provisioning (AP + setup web page) — confirmed end-to-end on real hardware, including WiFi network scanning (see [docs/hardware.md](docs/hardware.md) for the platform-version fix that took)
 - [ ] Google Weather API client (current conditions + hourly + daily)
 - [ ] Dashboard/hourly/daily/alert screens wired to live data
 
