@@ -22,8 +22,19 @@
 #define LV_FONT_MONTSERRAT_28 1
 #define LV_FONT_MONTSERRAT_48 1
 
+/* Panel is 5", 1280x720 -> ~294 PPI (verified: sqrt(1280^2+720^2)/5 in,
+ * width_px/width_in). That's dense — a "14px" label is only ~1.2mm tall on
+ * the glass, tiny even up close, let alone at any distance. 48 is the
+ * largest size LVGL ships a built-in bitmap font for; a genuinely large
+ * "read from across the room" hero number (matching the ~108px look in
+ * docs/mockups/dashboard.html) will need a custom-generated font later —
+ * not attempted here, this pass just moves every current screen off
+ * default-scale sizes that were picked without accounting for this panel's
+ * real density. */
+#define LV_FONT_DEFAULT &lv_font_montserrat_20
+
 /* Panel is 1280x720; used by lv_conf_internal's default DPI-scaled sizing. */
-#define LV_DPI_DEF 160
+#define LV_DPI_DEF 294
 
 #define LV_USE_PERF_MONITOR 0
 #define LV_USE_MEM_MONITOR 0

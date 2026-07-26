@@ -24,9 +24,42 @@ String urlEncode(const String &s) {
   return out;
 }
 
+// Maps Google's `status` field to something a non-developer can act on.
+// See https://developers.google.com/maps/documentation/geocoding/requests-geocoding#StatusCodes
+void describeStatus(const char *status, const char *apiErrorMessage, String &outError, bool &outRetryable) {
+  if (strcmp(status, "ZERO_RESULTS") == 0) {
+    outError = "No results for that city/ZIP - check it was entered correctly during setup.";
+    outRetryable = false;
+  } else if (strcmp(status, "REQUEST_DENIED") == 0) {
+    outError = "API key rejected";
+    if (apiErrorMessage[0] != '\0') {
+      outError += ": ";
+      outError += apiErrorMessage;
+    } else {
+      outError += " - check it's valid and the Geocoding API is enabled for it.";
+    }
+    outRetryable = false;
+  } else if (strcmp(status, "OVER_QUERY_LIMIT") == 0 || strcmp(status, "OVER_DAILY_LIMIT") == 0) {
+    outError = "Google API quota exceeded for this key - try again later.";
+    outRetryable = false;
+  } else if (strcmp(status, "INVALID_REQUEST") == 0) {
+    outError = "Invalid location query.";
+    outRetryable = false;
+  } else if (strcmp(status, "UNKNOWN_ERROR") == 0) {
+    outError = "Google's geocoding server had a temporary problem.";
+    outRetryable = true;
+  } else {
+    outError = "Unexpected response (";
+    outError += status;
+    outError += ").";
+    outRetryable = false;
+  }
+}
+
 }  // namespace
 
-bool geocodeLocation(const String &query, const String &apiKey, float &outLat, float &outLon) {
+bool geocodeLocation(const String &query, const String &apiKey, float &outLat, float &outLon,
+                      String &outError, bool &outRetryable) {
   // NOTE: setInsecure() skips TLS certificate validation. Acceptable for a
   // personal-use scaffold talking to a fixed, well-known Google endpoint;
   // the honest fix (pinning Google's root CA) is a follow-up, not done
@@ -40,12 +73,21 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
                       "&key=" + apiKey;
 
   if (!http.begin(client, url)) {
+    outError = "Could not start the request.";
+    outRetryable = true;
+    Serial.println("[geocode] http.begin() failed");
     return false;
   }
 
   const int code = http.GET();
+  Serial.printf("[geocode] HTTP status: %d\n", code);
   if (code != HTTP_CODE_OK) {
+    Serial.printf("[geocode] body: %s\n", http.getString().c_str());
     http.end();
+    outError = "Network error talking to Google (HTTP ";
+    outError += code;
+    outError += ").";
+    outRetryable = true;
     return false;
   }
 
@@ -53,15 +95,25 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
   const DeserializationError err = deserializeJson(doc, http.getStream());
   http.end();
   if (err) {
+    Serial.printf("[geocode] JSON parse failed: %s\n", err.c_str());
+    outError = "Bad response from Google.";
+    outRetryable = true;
     return false;
   }
 
   const char *status = doc["status"] | "";
+  Serial.printf("[geocode] status field: \"%s\"\n", status);
   if (strcmp(status, "OK") != 0) {
+    const char *apiErrorMessage = doc["error_message"] | "";
+    Serial.printf("[geocode] error_message: \"%s\"\n", apiErrorMessage);
+    describeStatus(status, apiErrorMessage, outError, outRetryable);
     return false;
   }
 
   outLat = doc["results"][0]["geometry"]["location"]["lat"] | 0.0f;
   outLon = doc["results"][0]["geometry"]["location"]["lng"] | 0.0f;
+  Serial.printf("[geocode] parsed lat=%ld.%03ld lon=%ld.%03ld (x1000 int, avoids relying on printf %%f)\n",
+                static_cast<long>(outLat * 1000) / 1000, labs(static_cast<long>(outLat * 1000)) % 1000,
+                static_cast<long>(outLon * 1000) / 1000, labs(static_cast<long>(outLon * 1000)) % 1000);
   return true;
 }

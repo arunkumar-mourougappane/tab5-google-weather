@@ -18,13 +18,17 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
 <style>
   :root {
     --ink: #1c2024; --sub: #52585e; --paper: #f2ede1; --panel: #e9e2d2;
-    --line: rgba(28,32,36,0.16); --brass: #a8681c;
+    --line: rgba(28,32,36,0.16); --brass: #a8681c; --teal: #2c655f;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--paper); color: var(--ink);
     font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
     padding: 22px 18px 60px; max-width: 480px; margin: 0 auto;
+  }
+  .mark {
+    display: flex; align-items: center; gap: 8px; font: 600 11px/1 -apple-system, sans-serif;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--brass); margin-bottom: 8px;
   }
   h1 { font-size: 20px; margin: 4px 0 6px; }
   p.lead { color: var(--sub); font-size: 13px; margin: 0 0 22px; }
@@ -38,11 +42,27 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
     border: 1px solid var(--line); border-radius: 9px; margin-bottom: 6px; cursor: pointer;
   }
   .net.sel { border-color: var(--brass); background: var(--panel); }
-  .net span.rssi { margin-left: auto; font-size: 11px; color: var(--sub); }
+  .net .radio {
+    width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--line);
+    flex: 0 0 auto; position: relative;
+  }
+  .net.sel .radio { border-color: var(--brass); }
+  .net.sel .radio::after {
+    content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--brass);
+  }
+  .net .ssid { flex: 1 1 auto; }
+  .net .bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
+  .net .bars i { width: 3px; background: var(--line); border-radius: 1px; display: block; }
+  .net.sel .bars i.on { background: var(--teal); }
   label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; }
+  .input-wrap { position: relative; display: flex; align-items: center; }
   input[type=text], input[type=password] {
-    width: 100%; font-size: 15px; padding: 10px 12px; border-radius: 8px;
+    width: 100%; font-size: 15px; padding: 10px 38px 10px 12px; border-radius: 8px;
     border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  }
+  .eye {
+    position: absolute; right: 10px; width: 18px; height: 18px; padding: 0; border: none;
+    background: none; color: var(--sub); cursor: pointer;
   }
   .help { font-size: 11.5px; color: var(--sub); margin-top: 4px; }
   .units { display: flex; gap: 8px; }
@@ -58,11 +78,16 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
   button.submit:disabled { opacity: 0.6; }
   #status { text-align: center; font-size: 12.5px; color: var(--sub); margin-top: 12px; min-height: 1.4em; }
   #scanning { font-size: 12.5px; color: var(--sub); }
+  .privacy { margin-top: 14px; font-size: 10.5px; color: var(--sub); text-align: center; line-height: 1.6; }
 </style>
 </head>
 <body>
+  <div class="mark">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    Tab5 Weather Setup
+  </div>
   <h1>Connect your display</h1>
-  <p class="lead">These details are saved on the device only and used to fetch your forecast.</p>
+  <p class="lead">These details are saved on the device only and used to fetch your forecast &mdash; nothing is sent anywhere else.</p>
 
   <form id="f">
     <fieldset>
@@ -71,7 +96,10 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
       <label for="ssidManual">Network name (if not listed above)</label>
       <input type="text" id="ssidManual" name="ssidManual" autocomplete="off" placeholder="HomeNet-5G">
       <label for="password">Network password</label>
-      <input type="password" id="password" name="password" autocomplete="off">
+      <div class="input-wrap">
+        <input type="password" id="password" name="password" autocomplete="off">
+        <button type="button" class="eye" data-toggle="password" aria-label="Show password">&#128065;</button>
+      </div>
     </fieldset>
 
     <fieldset>
@@ -84,7 +112,10 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
     <fieldset>
       <div class="sec-label">3. Google Weather API key</div>
       <label for="apikey">API key</label>
-      <input type="password" id="apikey" name="apikey" autocomplete="off" required>
+      <div class="input-wrap">
+        <input type="password" id="apikey" name="apikey" autocomplete="off" required>
+        <button type="button" class="eye" data-toggle="apikey" aria-label="Show API key">&#128065;</button>
+      </div>
       <div class="help">From Google Cloud Console, restricted to the Weather API.</div>
     </fieldset>
 
@@ -98,11 +129,19 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
 
     <button class="submit" type="submit" id="submitBtn">Save &amp; Connect</button>
     <div id="status"></div>
+    <div class="privacy">Nothing leaves this network except a request to weather.googleapis.com<br>once setup is complete.</div>
   </form>
 
 <script>
   let selectedSsid = "";
   let units = "imperial";
+
+  document.querySelectorAll('.eye').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.toggle);
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+  });
 
   fetch('/scan').then(r => r.json()).then(list => {
     const wrap = document.getElementById('networks');
@@ -111,7 +150,10 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
     list.forEach((n, i) => {
       const row = document.createElement('div');
       row.className = 'net' + (i === 0 ? ' sel' : '');
-      row.innerHTML = '<span>' + n.ssid + '</span><span class="rssi">' + n.rssi + ' dBm</span>';
+      const bars = n.rssi > -55 ? 4 : n.rssi > -65 ? 3 : n.rssi > -75 ? 2 : 1;
+      const heights = [4, 7, 10, 12];
+      const barsHtml = heights.map((h, bi) => '<i class="' + (bi < bars ? 'on' : '') + '" style="height:' + h + 'px"></i>').join('');
+      row.innerHTML = '<span class="radio"></span><span class="ssid">' + n.ssid + '</span><span class="bars">' + barsHtml + '</span>';
       row.addEventListener('click', () => {
         document.querySelectorAll('.net').forEach(el => el.classList.remove('sel'));
         row.classList.add('sel');

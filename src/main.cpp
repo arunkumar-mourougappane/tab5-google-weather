@@ -97,25 +97,59 @@ void initDisplay() {
 // screen per state. Plain ASCII punctuation only — LVGL's built-in
 // Montserrat fonts don't include Latin-1 Supplement glyphs like
 // middle-dot/em-dash, so those rendered as tofu boxes early on.
-void showStatusScreen(const char *title, const char *subtitle) {
+//
+// The small "TAB5 - WEATHER" wordmark is a persistent brand mark shown on
+// every screen here, same treatment every time (matches
+// docs/mockups/status.html's wordmark, always smaller than the title) — it
+// must never be reused as a screen's actual title/headline. Doing that once
+// (the old "connected" placeholder) was a real bug: the same string
+// visibly changed size between screens depending on which role it was
+// playing, which reads as broken even though each individual screen was
+// rendering correctly.
+//
+// `loading` controls only the spinner, matching the mockup's boot/sync
+// (spinner) vs. offline (static icon, not built here) distinction.
+void showStatusScreen(const char *title, const char *subtitle, bool loading) {
   lv_obj_t *screen = lv_screen_active();
   lv_obj_clean(screen);
   lv_obj_set_style_bg_color(screen, lv_color_hex(0x121417), 0);
   lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
-  lv_obj_t *titleLabel = lv_label_create(screen);
+  lv_obj_t *stack = lv_obj_create(screen);
+  lv_obj_set_size(stack, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(stack, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(stack, 0, 0);
+  lv_obj_set_style_pad_all(stack, 0, 0);
+  lv_obj_set_style_pad_row(stack, 16, 0);
+  lv_obj_set_flex_flow(stack, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(stack, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_clear_flag(stack, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_t *wordmark = lv_label_create(stack);
+  lv_label_set_text(wordmark, "TAB5 - WEATHER");
+  lv_obj_set_style_text_color(wordmark, lv_color_hex(0xA89E8C), 0);
+  lv_obj_set_style_text_font(wordmark, &lv_font_montserrat_20, 0);
+
+  if (loading) {
+    lv_obj_t *spinner = lv_spinner_create(stack);
+    lv_obj_set_size(spinner, 64, 64);
+    lv_obj_set_style_arc_color(spinner, lv_color_hex(0xD99A4E), LV_PART_INDICATOR);
+  }
+
+  lv_obj_t *titleLabel = lv_label_create(stack);
   lv_label_set_text(titleLabel, title);
   lv_obj_set_style_text_color(titleLabel, lv_color_hex(0xD99A4E), 0);
-  lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_20, 0);
-  lv_obj_align(titleLabel, LV_ALIGN_CENTER, 0, -16);
+  lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_48, 0);
 
-  lv_obj_t *subtitleLabel = lv_label_create(screen);
+  lv_obj_t *subtitleLabel = lv_label_create(stack);
   lv_label_set_text(subtitleLabel, subtitle);
   lv_obj_set_style_text_color(subtitleLabel, lv_color_hex(0xA89E8C), 0);
+  lv_obj_set_style_text_font(subtitleLabel, &lv_font_montserrat_20, 0);
   lv_obj_set_style_text_align(subtitleLabel, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_set_width(subtitleLabel, lv_pct(70));
-  lv_obj_set_style_text_align(subtitleLabel, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align(subtitleLabel, LV_ALIGN_CENTER, 0, 24);
+  lv_obj_set_width(subtitleLabel, 900);
+  lv_label_set_long_mode(subtitleLabel, LV_LABEL_LONG_WRAP);
+
+  lv_obj_center(stack);
 }
 
 void pumpLvgl() {
@@ -127,9 +161,28 @@ void pumpLvgl() {
 
 ConfigStore configStore;
 
+// Maps WiFi.status() to a reason a non-developer can act on, rather than
+// one generic "could not join" message for every case — a wrong password
+// and an out-of-range network need different fixes, both different from a
+// plain timeout.
+const char *describeWifiStatus(wl_status_t status) {
+  switch (status) {
+    case WL_NO_SSID_AVAIL:
+      return "Network not found - check it's in range and was entered correctly during setup.";
+    case WL_CONNECT_FAILED:
+      return "Could not authenticate - check the Wi-Fi password entered during setup.";
+    case WL_CONNECTION_LOST:
+      return "Connection lost partway through joining.";
+    case WL_DISCONNECTED:
+      return "Disconnected before finishing.";
+    default:
+      return "Timed out waiting to connect.";
+  }
+}
+
 void connectWifiOrRetryBoot() {
-  showStatusScreen("Connecting to Wi-Fi",
-                    ("Joining \"" + configStore.wifiSsid() + "\"...").c_str());
+  showStatusScreen("Connecting to Wi-Fi", ("Joining \"" + configStore.wifiSsid() + "\"...").c_str(),
+                    /*loading=*/true);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(configStore.wifiSsid().c_str(), configStore.wifiPassword().c_str());
@@ -141,10 +194,12 @@ void connectWifiOrRetryBoot() {
     delay(50);
   }
 
-  if (WiFi.status() != WL_CONNECTED) {
-    showStatusScreen("Could not join Wi-Fi", "Restarting to try again...");
+  const wl_status_t status = WiFi.status();
+  if (status != WL_CONNECTED) {
+    Serial.printf("[main] WiFi.status() = %d\n", status);
+    showStatusScreen("Could not join Wi-Fi", describeWifiStatus(status), /*loading=*/false);
     const uint32_t retryStart = millis();
-    while (millis() - retryStart < 3000) {
+    while (millis() - retryStart < 4000) {
       pumpLvgl();
       delay(20);
     }
@@ -157,17 +212,41 @@ void resolveLocationIfNeeded() {
     return;
   }
 
-  showStatusScreen("Finding your location", configStore.locationQuery().c_str());
+  showStatusScreen("Finding your location", configStore.locationQuery().c_str(), /*loading=*/true);
 
+  // geocodeLocation() is a single-shot HTTPS call with no retry of its own
+  // (see geocode.cpp) — a request fired immediately after WiFi.status()
+  // first reports WL_CONNECTED can still fail transiently (DNS/TLS not
+  // fully settled yet), the same class of "just-changed radio state isn't
+  // instantly ready" issue seen with WiFi scanning. Without a retry here,
+  // one such blip showed the "Could not resolve" screen even though the
+  // location would have resolved fine moments later. Only retries when
+  // geocodeLocation() itself says it's worth it — a bad API key or a
+  // location Google genuinely can't find won't change on attempt 2 or 3,
+  // so those show their specific reason immediately instead of wasting a
+  // second first.
   float lat = 0.0f;
   float lon = 0.0f;
-  if (geocodeLocation(configStore.locationQuery(), configStore.apiKey(), lat, lon)) {
+  String error;
+  bool retryable = true;
+  bool resolved = false;
+  for (int attempt = 0; attempt < 3 && !resolved && retryable; attempt++) {
+    if (attempt > 0) {
+      const uint32_t retryStart = millis();
+      while (millis() - retryStart < 500) {
+        pumpLvgl();
+        delay(20);
+      }
+    }
+    resolved = geocodeLocation(configStore.locationQuery(), configStore.apiKey(), lat, lon, error, retryable);
+  }
+
+  if (resolved) {
     configStore.saveLocation(lat, lon);
     return;
   }
 
-  showStatusScreen("Could not resolve that location",
-                    "Double check the city/ZIP entered during setup, then power-cycle to retry.");
+  showStatusScreen("Could not resolve that location", error.c_str(), /*loading=*/false);
   const uint32_t start = millis();
   while (millis() - start < 4000) {
     pumpLvgl();
@@ -176,10 +255,20 @@ void resolveLocationIfNeeded() {
 }
 
 void showConnectedPlaceholder() {
+  // Logged via integer math (not %f) specifically so this line can't be
+  // corrupted by the same suspected printf-float bug as the on-screen
+  // text below — a direct side-by-side comparison against the %.3f
+  // version, not another %f call that could have the identical problem.
+  Serial.printf("[main] stored lat=%ld.%03ld lon=%ld.%03ld\n",
+                static_cast<long>(configStore.latitude() * 1000) / 1000,
+                labs(static_cast<long>(configStore.latitude() * 1000)) % 1000,
+                static_cast<long>(configStore.longitude() * 1000) / 1000,
+                labs(static_cast<long>(configStore.longitude() * 1000)) % 1000);
+
   char subtitle[192];
-  snprintf(subtitle, sizeof(subtitle), "Connected. Weather for %s (%.3f, %.3f).\nDashboard not built yet.",
+  snprintf(subtitle, sizeof(subtitle), "Weather for %s (%.3f, %.3f).\nDashboard not built yet.",
            configStore.locationQuery().c_str(), configStore.latitude(), configStore.longitude());
-  showStatusScreen("TAB5 - WEATHER", subtitle);
+  showStatusScreen("Connected", subtitle, /*loading=*/false);
 }
 
 }  // namespace
