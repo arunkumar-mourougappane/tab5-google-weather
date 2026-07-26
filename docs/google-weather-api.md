@@ -3,6 +3,16 @@
 Part of Google Maps Platform (launched 2025). REST, API-key auth, JSON responses.
 Base host: `weather.googleapis.com`, all requests are `GET .../v1/<resource>:lookup`.
 
+Client implemented in [`src/weather.cpp`](../src/weather.cpp) /
+[`include/weather.h`](../include/weather.h): one function per endpoint below,
+same single-shot-request / specific-error-message / retryable-flag shape as
+`geocodeLocation()` (`src/geocode.cpp`) — see that file's error handling for
+the pattern. One difference worth noting: this API's errors come back in
+Google Cloud's standard `{"error": {"code", "message", "status"}}` envelope,
+not the older Maps APIs' top-level `status` field that Geocoding uses, so
+`describeError()` in `weather.cpp` maps a different set of canonical codes
+(`PERMISSION_DENIED`, `RESOURCE_EXHAUSTED`, `INVALID_ARGUMENT`, ...).
+
 ## Auth
 
 Query param `key=YOUR_API_KEY`. Standard Google Cloud API key from a project with

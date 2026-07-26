@@ -4,8 +4,10 @@
 // provisioned, run first-run setup (AP + web page, docs/mockups/
 // provisioning.html) and reboot -> join the saved Wi-Fi -> geocode the
 // saved location once if we haven't already (docs/google-weather-api.md)
-// -> [dashboard/weather client not built yet — placeholder "connected"
-// screen for now].
+// -> fetch current conditions (src/weather.cpp) and show them.
+// [Real dashboard layout/hourly+daily strips not built yet — this is just
+// current conditions on the same status-screen chrome, to prove the
+// weather client end-to-end.]
 
 #include <M5Unified.h>
 #include <WiFi.h>
@@ -14,6 +16,7 @@
 #include "config_store.h"
 #include "geocode.h"
 #include "provisioning.h"
+#include "weather.h"
 
 namespace {
 
@@ -254,21 +257,46 @@ void resolveLocationIfNeeded() {
   }
 }
 
-void showConnectedPlaceholder() {
-  // Logged via integer math (not %f) specifically so this line can't be
-  // corrupted by the same suspected printf-float bug as the on-screen
-  // text below — a direct side-by-side comparison against the %.3f
-  // version, not another %f call that could have the identical problem.
-  Serial.printf("[main] stored lat=%ld.%03ld lon=%ld.%03ld\n",
-                static_cast<long>(configStore.latitude() * 1000) / 1000,
-                labs(static_cast<long>(configStore.latitude() * 1000)) % 1000,
-                static_cast<long>(configStore.longitude() * 1000) / 1000,
-                labs(static_cast<long>(configStore.longitude() * 1000)) % 1000);
+// No dashboard UI yet (see docs/rendering.md's "Open problem" section on
+// hero-scale fonts) — this just proves the weather.googleapis.com client
+// (src/weather.cpp) end-to-end on real hardware by fetching current
+// conditions once and showing them on the same status-screen chrome used
+// for every other boot state. Same single-shot-with-limited-retry shape as
+// resolveLocationIfNeeded(): only retries when fetchCurrentConditions()
+// itself says the failure was transient.
+void fetchAndShowCurrentConditions() {
+  showStatusScreen("Getting weather", configStore.locationQuery().c_str(), /*loading=*/true);
 
+  CurrentConditions conditions;
+  String error;
+  bool retryable = true;
+  bool fetched = false;
+  for (int attempt = 0; attempt < 3 && !fetched && retryable; attempt++) {
+    if (attempt > 0) {
+      const uint32_t retryStart = millis();
+      while (millis() - retryStart < 500) {
+        pumpLvgl();
+        delay(20);
+      }
+    }
+    fetched = fetchCurrentConditions(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
+                                      configStore.unitsImperial(), conditions, error, retryable);
+  }
+
+  if (!fetched) {
+    showStatusScreen("Could not get weather", error.c_str(), /*loading=*/false);
+    return;
+  }
+
+  const char *unitSuffix = configStore.unitsImperial() ? "F" : "C";
   char subtitle[192];
-  snprintf(subtitle, sizeof(subtitle), "Weather for %s (%.3f, %.3f).\nDashboard not built yet.",
-           configStore.locationQuery().c_str(), configStore.latitude(), configStore.longitude());
-  showStatusScreen("Connected", subtitle, /*loading=*/false);
+  snprintf(subtitle, sizeof(subtitle), "%s\nFeels like %d%s - humidity %d%%",
+           conditions.condition.description.c_str(), static_cast<int>(conditions.feelsLikeTemperature),
+           unitSuffix, conditions.relativeHumidity);
+
+  char title[32];
+  snprintf(title, sizeof(title), "%d%s", static_cast<int>(conditions.temperature), unitSuffix);
+  showStatusScreen(title, subtitle, /*loading=*/false);
 }
 
 }  // namespace
@@ -291,7 +319,7 @@ void setup() {
 
   connectWifiOrRetryBoot();
   resolveLocationIfNeeded();
-  showConnectedPlaceholder();
+  fetchAndShowCurrentConditions();
 }
 
 void loop() {

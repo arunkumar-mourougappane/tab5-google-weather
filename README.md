@@ -11,7 +11,7 @@ A weather dashboard for the [M5Stack Tab5](https://docs.m5stack.com/en/core/Tab5
 
 ## Status
 
-Early firmware — display, touch, and first-run WiFi provisioning are all confirmed working on real hardware; the actual weather app isn't wired up yet.
+Early firmware — display, touch, first-run WiFi provisioning, and the Google Weather API client are all built; the real dashboard/hourly/daily UI isn't wired up yet (current conditions render on the boot-status screen chrome for now, just to prove the client end-to-end).
 
 - [x] Hardware, API, rendering, and build-tooling research ([docs/](docs/))
 - [x] UI mockups for all six screens ([docs/mockups/](docs/mockups/))
@@ -19,7 +19,7 @@ Early firmware — display, touch, and first-run WiFi provisioning are all confi
 - [x] GitHub Actions firmware build CI ([.github/workflows/build.yml](.github/workflows/build.yml))
 - [x] Display + touch (LVGL over M5GFX) — confirmed on a real Tab5 ([docs/rendering.md](docs/rendering.md) for the rotation/color-format gotchas)
 - [x] First-run provisioning (AP + setup web page) — confirmed end-to-end on real hardware, including WiFi network scanning (see [docs/hardware.md](docs/hardware.md) for the platform-version fix that took)
-- [ ] Google Weather API client (current conditions + hourly + daily)
+- [x] Google Weather API client (current conditions + hourly + daily) — [src/weather.cpp](src/weather.cpp), current conditions wired into boot flow; not yet hardware-tested
 - [ ] Dashboard/hourly/daily/alert screens wired to live data
 
 ## Building
