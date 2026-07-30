@@ -11,13 +11,13 @@ right by default. Worth being precise about what that switch did and didn't
 fix, though: it fixed WiFi bring-up being fragile (the generic board's
 variant bakes in *wrong* SDIO pins to the C6 co-processor at static init,
 not just "unset" ones), but it did **not** fix `WiFi.scanNetworks()` failing
-outright — that took a separate platform version bump, below. See
+outright, which turned out to be a separate, deeper issue — see below and
 [hardware.md](hardware.md) for the full story; it's a good example of two
 real, independent bugs that looked at first like they might share one cause.
 
 ```ini
 [env:tab5]
-platform = https://github.com/pioarduino/platform-espressif32.git#55.03.39
+platform = https://github.com/pioarduino/platform-espressif32.git#55.03.37
 board = m5stack-tab5-p4
 board_build.partitions = default_16MB.csv
 board_upload.flash_size = 16MB
@@ -39,20 +39,43 @@ documented below were all discovered and hand-added while still on the
 generic board; kept here as history since the *reasons* they're needed are
 still real, just no longer this project's problem to set manually.
 
-**Verified the hard way — the platform version, not the board, is what fixed
-`WiFi.scanNetworks()`.** Bumped from `#55.03.35` (ESP-IDF v5.5.1) to
-`#55.03.39` (v5.5.4) after comparing against a working reference project on
-the same hardware. `#55.03.35` was deliberately pinned to stay on IDF 5.5.1
-specifically to dodge the MIPI-DSI backlight flicker regression IDF 5.5.2
-introduced (below) — every tag past `.35` jumps straight to 5.5.2+, so this
-trades a fixed, understood risk for an unfixed, understood benefit. Confirmed
-on real hardware: scan works (real SSIDs returned) and no flicker observed —
-but "clean on this unit" isn't a guarantee for every Tab5 out there, so watch
-for flicker specifically after any future platform-version change, not just
-this one. `#55.03.35` remains the documented-safe fallback if it ever
-appears, at the cost of scan going back to broken (the manual SSID entry
-field in the provisioning UI stays the primary path regardless of which
-pin is active).
+**Platform version history — three different tradeoffs tried, in order:**
+
+1. `#55.03.35` (ESP-IDF v5.5.1) — chosen specifically to dodge the
+   MIPI-DSI backlight flicker regression IDF 5.5.2 introduced (below).
+   `WiFi.scanNetworks()` deterministically broken on this version.
+2. `#55.03.39` (IDF v5.5.4) — bumped here after comparing against a
+   working reference project, confirmed on hardware to fix
+   `WiFi.scanNetworks()` (real SSIDs returned) with no backlight flicker
+   observed on this unit. Later found, much further into this project
+   (see [hardware.md](hardware.md)), to carry a severe esp-hosted
+   SDIO/DMA-memory regression that made the Weather API client
+   essentially unusable — frequent hard crashes fetching JSON over HTTPS.
+3. **`#55.03.37` (IDF v5.5.2) — current pin.** A controlled comparison on
+   the upstream esp-hosted-mcu issue tracker found arduino-esp32 3.3.7
+   (this tag) has ~10x more usable DMA-capable memory than 3.3.11, and
+   this project confirmed the same on its own hardware: the crash is
+   gone, reproduced clean across multiple boots. Re-tested
+   `WiFi.scanNetworks()` on this version specifically — **still
+   deterministically broken** (`-2`/`WIFI_SCAN_FAILED`), same as
+   `#55.03.35`. So the scan fix landed somewhere between IDF 5.5.2 and
+   5.5.4 specifically, not simply "any version past 5.5.1" as originally
+   assumed when `.39` was first adopted — and it isn't available together
+   with the DMA fix in any currently published platform tag.
+
+Given that, **this project no longer attempts `WiFi.scanNetworks()` at
+all** — removed from `provisioning.cpp`/`provisioning_page.h` rather than
+carried as dead-but-harmless fallback code, since it's not an occasional
+edge case on this version, it's the only path. Manual SSID entry in the
+setup page is the sole way to join WiFi during provisioning now, not a
+fallback UI state. If a future pioarduino tag ever bundles an esp-hosted
+version with both fixes, scanning could be reintroduced, but there's no
+reason to keep the code around unused until then.
+
+No backlight flicker observed on `#55.03.37` either, across the same
+test boots — but as with `.39` before it, "clean on this unit" isn't a
+guarantee for every Tab5 revision out there, so watch for it after any
+future platform-version change, not just this one.
 
 **Verified the hard way (Serial vs. the console) — took two flags, not one:**
 
@@ -87,12 +110,10 @@ compile error. `default_16MB.csv` gives two 6.25MB OTA app slots instead —
 matches the Tab5's actual 16MB flash and leaves real headroom for the
 dashboard/weather client still to come.
 
-Verified requirement: the `#55.03.39` tag's `platform.json` declares
-`"engines": {"platformio": ">=6.1.19"}` — one patch tighter than `#55.03.35`'s
-`>=6.1.18`. PlatformIO Core 6.1.19 (the version on this dev machine) still
-satisfies it, but exactly, with no patch releases to spare — worth rechecking
-this if `pio run` ever starts complaining about the platformio version on an
-older Core install.
+Verified requirement: the `#55.03.37` tag's `platform.json` declares
+`"engines": {"platformio": ">=6.1.18"}`, same as `#55.03.35`'s. (`#55.03.39`,
+used briefly in between, tightened this to `>=6.1.19` — worth rechecking
+this constraint again if the platform pin ever changes.)
 
 **Verified the hard way:** `pio run` on this platform version hard-fails under
 Python 3.14 with `ERROR: Python version must be between 3.10 and 3.13` — it's
@@ -128,13 +149,14 @@ Notes:
 
 - **`platform` is a fork (`pioarduino`), not upstream `platformio/platform-espressif32`.**
   Upstream doesn't yet carry ESP32-P4/IDF 5.5.x support; pioarduino does.
-- **Pinned to `#55.03.39`** (IDF 5.5.4), not `latest` — still a deliberate
-  pin, just no longer `#55.03.35`. That version was IDF 5.5.1, chosen
-  specifically to dodge the MIPI-DSI backlight flicker regression IDF 5.5.2
-  introduced; `.39` is past that version but was confirmed flicker-free on
-  real hardware, traded for a `WiFi.scanNetworks()` fix — see
-  [hardware.md](hardware.md) for the full story. Any further pin change
-  needs a real device test for both symptoms, not just "does it compile."
+- **Pinned to `#55.03.37`** (IDF 5.5.2), not `latest` — a deliberate pin,
+  chosen for its esp-hosted SDIO/DMA memory behavior (fixes a severe
+  crash present on `#55.03.39`, tried in between) at the cost of
+  `WiFi.scanNetworks()` staying broken, same as the original `#55.03.35`
+  pin — see [hardware.md](hardware.md) for the full story of all three.
+  Any further pin change needs a real device test for all three symptoms
+  (scan, backlight flicker, esp-hosted DMA/crash behavior under HTTPS
+  traffic), not just "does it compile."
 - `board = m5stack-tab5-p4`, variant `m5stack_tab5` — the dedicated profile,
   not the generic `esp32-p4-evboard` this project started on.
 - M5GFX/M5Unified pulled from GitHub `HEAD` rather than a pinned release for now,

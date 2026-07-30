@@ -30,10 +30,6 @@ ConfigStore *g_config = nullptr;
 volatile bool g_done = false;
 String g_apSsid;
 
-// Populated once, in plain STA mode, before the AP starts — see
-// scanNetworksOnce() below for why. handleScan() just serves this.
-String g_scanResultsJson = "[]";
-
 lv_obj_t *g_waitingScreen = nullptr;
 lv_obj_t *g_successScreen = nullptr;
 
@@ -269,51 +265,6 @@ void sendJsonError(const char *message) {
 
 void handleRoot() { server.send_P(200, "text/html", kProvisioningPageHtml); }
 
-// Scans once, in plain STA mode, before the AP starts — not on every /scan
-// request. Observed on real hardware: scanning *while* the AP is actively
-// beaconing/serving HTTP is flaky (empty result one call, outright
-// "failed" the next, back to back, same device) — almost certainly
-// contention for the C6's radio/SDIO link between AP traffic and a
-// concurrent STA scan, not a real "no networks in range." Scanning before
-// the AP exists removes that contention entirely. A few retries here too,
-// since even the uncontended scan wasn't perfectly reliable in testing.
-void scanNetworksOnce() {
-  WiFi.mode(WIFI_STA);
-  // Give the radio a moment after the mode switch before the first scan —
-  // confirmed on real hardware that attempt 0 came back a clean "completed,
-  // 0 networks" (not a failure) immediately after WIFI_STA was set, with no
-  // settling time at all beforehand.
-  delay(200);
-
-  int count = -1;
-  // Retry on <= 0, not just < 0: a suspicious "completed but empty" result
-  // deserves the same skepticism as an outright failure here, not just a
-  // negative one — see above. Three attempts either way; a genuinely empty
-  // area just costs ~600ms extra at worst.
-  for (int attempt = 0; attempt < 3 && count <= 0; attempt++) {
-    if (attempt > 0) delay(300);
-    count = WiFi.scanNetworks();
-    Serial.printf("[provisioning] scanNetworks() attempt %d -> %d\n", attempt, count);
-  }
-
-  String json = "[";
-  for (int i = 0; i < count; i++) {
-    if (i > 0) json += ",";
-    json += "{\"ssid\":\"" + WiFi.SSID(i) + "\",\"rssi\":" + String(WiFi.RSSI(i)) + "}";
-    // ESP32-C6 (the Tab5's WiFi co-processor) is 2.4GHz-only — logging
-    // channel here so a 5GHz-only target network shows up as an absence
-    // here rather than a mystery, if that turns out to matter later.
-    Serial.printf("[provisioning]   %2d: \"%s\" rssi=%d ch=%d\n", i, WiFi.SSID(i).c_str(),
-                  WiFi.RSSI(i), WiFi.channel(i));
-  }
-  json += "]";
-  WiFi.scanDelete();
-
-  g_scanResultsJson = json;
-}
-
-void handleScan() { server.send(200, "application/json", g_scanResultsJson); }
-
 void handleSave() {
   const String ssid = server.arg("ssid");
   const String password = server.arg("password");
@@ -348,14 +299,18 @@ void runProvisioning(ConfigStore &config) {
   g_config = &config;
   g_done = false;
 
-  // Scan first, in plain STA mode, before touching AP mode at all — see
-  // scanNetworksOnce() for why (concurrent AP+scan was flaky on real
-  // hardware). apSsid() only needs the MAC, which is stable regardless of
-  // mode, so reading it before the mode switch is fine.
+  // AP only, no STA — this project no longer attempts WiFi.scanNetworks()
+  // at all (see docs/hardware.md: broken outright on the ESP-IDF version
+  // this project is pinned to, and no available version combines a
+  // working scan with the fix for the separate SDIO/esp-aes DMA crash).
+  // Manual SSID entry in the setup page is the only path now, not a
+  // fallback for a rarer case, so there's no reason to bring STA up here
+  // at all — also sidesteps the spurious "NO_AP_FOUND" reconnect-retry
+  // noise WIFI_AP_STA caused by re-enabling the STA radio with stale
+  // auto-reconnect credentials from an earlier session.
   g_apSsid = apSsid();
-  scanNetworksOnce();
 
-  WiFi.mode(WIFI_AP_STA);
+  WiFi.mode(WIFI_AP);
   WiFi.softAP(g_apSsid.c_str());
   delay(100);
 
@@ -365,7 +320,6 @@ void runProvisioning(ConfigStore &config) {
   dnsServer.start(53, "*", WiFi.softAPIP());
 
   server.on("/", HTTP_GET, handleRoot);
-  server.on("/scan", HTTP_GET, handleScan);
   server.on("/save", HTTP_POST, handleSave);
   server.onNotFound(handleNotFound);
   server.begin();

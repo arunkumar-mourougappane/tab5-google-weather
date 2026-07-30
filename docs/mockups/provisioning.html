@@ -89,19 +89,6 @@
   .field-section .sec-label { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sub); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
   .field-section .sec-label .n { width: 16px; height: 16px; border-radius: 50%; background: var(--panel-2); display: inline-flex; align-items: center; justify-content: center; font-size: 9.5px; color: var(--ink); }
 
-  .net-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; margin-bottom: 6px;
-  }
-  .net-row.selected { border-color: var(--brass); background: var(--panel); }
-  .net-row .radio { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--line-strong); flex: 0 0 auto; position: relative; }
-  .net-row.selected .radio { border-color: var(--brass); }
-  .net-row.selected .radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--brass); }
-  .net-row .ssid { flex: 1 1 auto; font-size: 13.5px; font-weight: 600; }
-  .net-row .bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
-  .net-row .bars i { width: 3px; background: var(--line-strong); border-radius: 1px; display: block; }
-  .net-row.selected .bars i.on { background: var(--teal); }
-
   .fieldset { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
   .fieldset label { font-size: 12px; font-weight: 600; }
   .input-wrap { position: relative; display: flex; align-items: center; }
@@ -220,9 +207,12 @@
 
       <div class="field-section">
         <div class="sec-label"><span class="n">1</span>Wi-Fi network</div>
-        <div class="net-row selected"><span class="radio"></span><span class="ssid">HomeNet-5G</span><span class="bars"><i class="on" style="height:4px"></i><i class="on" style="height:7px"></i><i class="on" style="height:10px"></i><i class="on" style="height:12px"></i></span></div>
-        <div class="net-row"><span class="radio"></span><span class="ssid">HomeNet-2.4</span><span class="bars"><i class="on" style="height:4px"></i><i class="on" style="height:7px"></i><i style="height:10px"></i><i style="height:12px"></i></span></div>
-        <div class="net-row"><span class="radio"></span><span class="ssid">Guest</span><span class="bars"><i class="on" style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:12px"></i></span></div>
+        <div class="fieldset">
+          <label>Network name</label>
+          <div class="input-wrap">
+            <input type="text" value="HomeNet-5G" readonly>
+          </div>
+        </div>
         <div class="fieldset" style="margin-top:10px;">
           <label>Network password</label>
           <div class="input-wrap">
@@ -266,7 +256,7 @@
     </div>
   </div>
 
-  <p class="caption" style="margin-top:22px;">Served directly from the Tab5&rsquo;s own web server over the AP &mdash; no app to install, no account, no cloud relay. Network list comes from a live scan; fields shown here are illustrative sample values.</p>
+  <p class="caption" style="margin-top:22px;">Served directly from the Tab5&rsquo;s own web server over the AP &mdash; no app to install, no account, no cloud relay. Network name is typed in directly (no live scan &mdash; not reliable on this hardware); fields shown here are illustrative sample values.</p>
 </div>
 
 <script>

@@ -301,14 +301,25 @@ throughout instead of collapsing to single-digit KB. No backlight
 flicker observed by eye across the same 4 boots. `platformio.ini` is
 now pinned to `#55.03.37`.
 
-**Not yet re-verified:** `WiFi.scanNetworks()` in provisioning (the
-original reason this project moved off IDF 5.5.1) hasn't been
-re-tested on 5.5.2 specifically. Not a hard blocker if it's still
-broken — manual SSID entry is already the primary path in
-provisioning, scanning is a convenience — but worth checking before
-calling this fully closed. See `platformio.ini`'s comment for the
-fallback chain if either regression (scan or flicker) turns out to
-still be present.
+**Re-verified, confirmed still broken — and now removed rather than kept
+as dead fallback code.** `WiFi.scanNetworks()` was re-tested on `#55.03.37`
+and is still deterministically `-2`/`WIFI_SCAN_FAILED`, same as the
+original `#55.03.35` pin — the scan fix that shipped somewhere between IDF
+5.5.2 and 5.5.4 isn't present here. Release notes for arduino-esp32
+3.3.6–3.3.9 don't show an isolated, cherry-pickable commit for it either;
+the likely explanation is a difference in the *bundled esp-hosted host
+library* version (`2.11.6` on `3.3.7` vs. `2.12.8` on the previously-pinned
+`3.3.9`, per this project's own boot logs), which is compiled into the
+precompiled `framework-arduinoespressif32-libs` package per arduino-esp32
+release — not independently selectable, the same wall hit repeatedly
+elsewhere in this doc. No currently published platform tag combines a
+working scan with the esp-hosted DMA fix.
+
+Given that, this project no longer attempts `WiFi.scanNetworks()` at all —
+removed from `provisioning.cpp`/`provisioning_page.h`/
+`docs/mockups/provisioning.html` (see `docs/platformio-and-ci.md` for the
+full reasoning) rather than kept around as unreachable fallback code.
+Manual SSID entry is the sole way to join WiFi during provisioning now.
 
 Two other things worth knowing before debugging WiFi issues on this hardware:
 

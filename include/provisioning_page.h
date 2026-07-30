@@ -37,23 +37,6 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
     text-transform: uppercase; color: var(--sub); margin: 0 0 8px;
   }
   fieldset { border: none; padding: 0; margin: 0 0 22px; }
-  .net {
-    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-    border: 1px solid var(--line); border-radius: 9px; margin-bottom: 6px; cursor: pointer;
-  }
-  .net.sel { border-color: var(--brass); background: var(--panel); }
-  .net .radio {
-    width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--line);
-    flex: 0 0 auto; position: relative;
-  }
-  .net.sel .radio { border-color: var(--brass); }
-  .net.sel .radio::after {
-    content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--brass);
-  }
-  .net .ssid { flex: 1 1 auto; }
-  .net .bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
-  .net .bars i { width: 3px; background: var(--line); border-radius: 1px; display: block; }
-  .net.sel .bars i.on { background: var(--teal); }
   label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; }
   .input-wrap { position: relative; display: flex; align-items: center; }
   input[type=text], input[type=password] {
@@ -77,7 +60,6 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
   }
   button.submit:disabled { opacity: 0.6; }
   #status { text-align: center; font-size: 12.5px; color: var(--sub); margin-top: 12px; min-height: 1.4em; }
-  #scanning { font-size: 12.5px; color: var(--sub); }
   .privacy { margin-top: 14px; font-size: 10.5px; color: var(--sub); text-align: center; line-height: 1.6; }
 </style>
 </head>
@@ -92,9 +74,8 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
   <form id="f">
     <fieldset>
       <div class="sec-label">1. Wi-Fi network</div>
-      <div id="networks"><div id="scanning">Scanning&hellip;</div></div>
-      <label for="ssidManual">Network name (if not listed above)</label>
-      <input type="text" id="ssidManual" name="ssidManual" autocomplete="off" placeholder="HomeNet-5G">
+      <label for="ssid">Network name</label>
+      <input type="text" id="ssid" name="ssid" autocomplete="off" placeholder="HomeNet-5G" required>
       <label for="password">Network password</label>
       <div class="input-wrap">
         <input type="password" id="password" name="password" autocomplete="off">
@@ -133,7 +114,6 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
   </form>
 
 <script>
-  let selectedSsid = "";
   let units = "imperial";
 
   document.querySelectorAll('.eye').forEach(btn => {
@@ -141,29 +121,6 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
       const input = document.getElementById(btn.dataset.toggle);
       input.type = input.type === 'password' ? 'text' : 'password';
     });
-  });
-
-  fetch('/scan').then(r => r.json()).then(list => {
-    const wrap = document.getElementById('networks');
-    wrap.innerHTML = '';
-    if (!list.length) { wrap.innerHTML = '<div id="scanning">Network scanning isn\'t available on this display &mdash; type your network\'s name below instead.</div>'; return; }
-    list.forEach((n, i) => {
-      const row = document.createElement('div');
-      row.className = 'net' + (i === 0 ? ' sel' : '');
-      const bars = n.rssi > -55 ? 4 : n.rssi > -65 ? 3 : n.rssi > -75 ? 2 : 1;
-      const heights = [4, 7, 10, 12];
-      const barsHtml = heights.map((h, bi) => '<i class="' + (bi < bars ? 'on' : '') + '" style="height:' + h + 'px"></i>').join('');
-      row.innerHTML = '<span class="radio"></span><span class="ssid">' + n.ssid + '</span><span class="bars">' + barsHtml + '</span>';
-      row.addEventListener('click', () => {
-        document.querySelectorAll('.net').forEach(el => el.classList.remove('sel'));
-        row.classList.add('sel');
-        selectedSsid = n.ssid;
-      });
-      wrap.appendChild(row);
-      if (i === 0) selectedSsid = n.ssid;
-    });
-  }).catch(() => {
-    document.getElementById('networks').innerHTML = '<div id="scanning">Scan failed &mdash; reload to retry.</div>';
   });
 
   document.querySelectorAll('.units button').forEach(btn => {
@@ -178,9 +135,8 @@ static const char kProvisioningPageHtml[] PROGMEM = R"HTML(<!doctype html>
     e.preventDefault();
     const statusEl = document.getElementById('status');
     const submitBtn = document.getElementById('submitBtn');
-    const manualSsid = document.getElementById('ssidManual').value.trim();
-    const ssid = manualSsid || selectedSsid;
-    if (!ssid) { statusEl.textContent = 'Pick a Wi-Fi network, or type its name, first.'; return; }
+    const ssid = document.getElementById('ssid').value.trim();
+    if (!ssid) { statusEl.textContent = 'Enter your Wi-Fi network name first.'; return; }
 
     submitBtn.disabled = true;
     statusEl.textContent = 'Saving…';
