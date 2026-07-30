@@ -6,6 +6,7 @@
 
 #include "http_json_client.h"
 #include "json_arena_allocator.h"
+#include "logging.h"
 
 namespace {
 
@@ -112,12 +113,12 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
     if (httpCode == 0) {
       outError = "Could not start the request.";
       outRetryable = true;
-      Serial.println("[geocode] http.begin() failed");
+      LOG_E("geocode", "http.begin() failed\n");
       return false;
     }
 
-    Serial.printf("[geocode] HTTP status: %d\n", httpCode);
-    Serial.printf("[geocode] body: %s\n", body.c_str());
+    LOG_W("geocode", "HTTP status: %d\n", httpCode);
+    LOG_W("geocode", "body: %s\n", body.c_str());
     // JsonDocument::memoryUsage() would be the obvious way to check this,
     // but it's deprecated in this ArduinoJson version and unconditionally
     // returns 0 — see json_arena_allocator.h. Logged here too (not just
@@ -125,9 +126,9 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
     // and a body that looks complete/valid is exactly what an arena
     // overflow looks like — this line is what would have made that
     // diagnosable immediately instead of needing a hardware log to spot.
-    Serial.printf("[geocode] JSON arena: %u bytes used of %u, overflowed=%d\n",
-                  static_cast<unsigned>(stackDoc.bytesUsed()), static_cast<unsigned>(kJsonArenaBytes),
-                  stackDoc.overflowed());
+    LOG_D("geocode", "JSON arena: %u bytes used of %u, overflowed=%d\n",
+          static_cast<unsigned>(stackDoc.bytesUsed()), static_cast<unsigned>(kJsonArenaBytes),
+          stackDoc.overflowed());
 
     if (httpCode != HTTP_CODE_OK) {
       outError = "Network error talking to Google (HTTP ";
@@ -143,24 +144,23 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
     return false;
   }
 
-  Serial.printf("[geocode] HTTP status: %d\n", httpCode);
-  Serial.printf("[geocode] JSON arena: %u bytes used of %u, overflowed=%d\n",
-                static_cast<unsigned>(stackDoc.bytesUsed()), static_cast<unsigned>(kJsonArenaBytes),
-                stackDoc.overflowed());
+  LOG_D("geocode", "HTTP status: %d\n", httpCode);
+  LOG_D("geocode", "JSON arena: %u bytes used of %u, overflowed=%d\n", static_cast<unsigned>(stackDoc.bytesUsed()),
+        static_cast<unsigned>(kJsonArenaBytes), stackDoc.overflowed());
 
   const char *status = doc["status"] | "";
-  Serial.printf("[geocode] status field: \"%s\"\n", status);
+  LOG_D("geocode", "status field: \"%s\"\n", status);
   if (strcmp(status, "OK") != 0) {
     const char *apiErrorMessage = doc["error_message"] | "";
-    Serial.printf("[geocode] error_message: \"%s\"\n", apiErrorMessage);
+    LOG_W("geocode", "error_message: \"%s\"\n", apiErrorMessage);
     describeStatus(status, apiErrorMessage, outError, outRetryable);
     return false;
   }
 
   outLat = doc["results"][0]["geometry"]["location"]["lat"] | 0.0f;
   outLon = doc["results"][0]["geometry"]["location"]["lng"] | 0.0f;
-  Serial.printf("[geocode] parsed lat=%ld.%03ld lon=%ld.%03ld (x1000 int, avoids relying on printf %%f)\n",
-                static_cast<long>(outLat * 1000) / 1000, labs(static_cast<long>(outLat * 1000)) % 1000,
-                static_cast<long>(outLon * 1000) / 1000, labs(static_cast<long>(outLon * 1000)) % 1000);
+  LOG_I("geocode", "parsed lat=%ld.%03ld lon=%ld.%03ld (x1000 int, avoids relying on printf %%f)\n",
+        static_cast<long>(outLat * 1000) / 1000, labs(static_cast<long>(outLat * 1000)) % 1000,
+        static_cast<long>(outLon * 1000) / 1000, labs(static_cast<long>(outLon * 1000)) % 1000);
   return true;
 }

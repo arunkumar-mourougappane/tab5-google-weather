@@ -6,6 +6,7 @@
 #include <lvgl.h>
 #include <qrcode.h>
 
+#include "logging.h"
 #include "provisioning_page.h"
 
 namespace {
@@ -314,7 +315,7 @@ void runProvisioning(ConfigStore &config) {
   WiFi.softAP(g_apSsid.c_str());
   delay(100);
 
-  Serial.printf("[provisioning] AP \"%s\" up, mode=%d, softAPIP=%s\n", g_apSsid.c_str(), WiFi.getMode(),
+  LOG_I("provisioning", "AP \"%s\" up, mode=%d, softAPIP=%s\n", g_apSsid.c_str(), WiFi.getMode(),
                 WiFi.softAPIP().toString().c_str());
 
   dnsServer.start(53, "*", WiFi.softAPIP());

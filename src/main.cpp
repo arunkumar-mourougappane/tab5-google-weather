@@ -26,6 +26,7 @@
 #include "config_store.h"
 #include "display.h"
 #include "geocode.h"
+#include "logging.h"
 #include "provisioning.h"
 #include "shared_state.h"
 #include "weather.h"
@@ -44,9 +45,8 @@ SharedState sharedState;
 // upstream esp-hosted issue documented there. Left in place since it's
 // cheap and the upstream bug is still open — useful if it resurfaces.
 void logHeapStats(const char *label) {
-  Serial.printf("[heap] %s: free=%u largest_internal=%u largest_dma=%u\n", label, ESP.getFreeHeap(),
-                heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
-                heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
+  LOG_D("heap", "%s: free=%u largest_internal=%u largest_dma=%u\n", label, ESP.getFreeHeap(),
+        heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
 }
 
 // ---------------------------------------------------------------------
@@ -71,7 +71,7 @@ void connectWifiOrRetryBoot() {
 
   const wl_status_t status = WiFi.status();
   if (status != WL_CONNECTED) {
-    Serial.printf("[net] WiFi.status() = %d\n", status);
+    LOG_E("net", "WiFi.status() = %d\n", status);
     sharedState.publishStatus("Could not join Wi-Fi", describeWifiStatus(status), /*loading=*/false);
     delay(4000);
     ESP.restart();
@@ -84,8 +84,29 @@ void connectWifiOrRetryBoot() {
   // failures shouldn't mean WiFi itself is bad. Logging this here (and
   // again in logWifiState() below, before each fetch) makes that visible
   // in the log instead of having to infer it.
-  Serial.printf("[net] WiFi connected: ssid=%s ip=%s rssi=%d dBm\n", WiFi.SSID().c_str(),
-                WiFi.localIP().toString().c_str(), WiFi.RSSI());
+  LOG_I("net", "WiFi connected: ssid=%s ip=%s rssi=%d dBm\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str(),
+        WiFi.RSSI());
+}
+
+// NTP sync, once, right after WiFi comes up — purely so log timestamps
+// show real wall-clock time instead of just uptime (see logging.h). UTC
+// only: this project doesn't currently resolve a timezone for the
+// provisioned location (the Weather API's response does include a
+// timeZone.id, e.g. "America/Chicago", but converting IANA zone names to
+// a POSIX TZ string needs a lookup table this project doesn't have — out
+// of scope for what's just a logging nicety). Blocks this task for up to
+// 10s if NTP is unreachable, same shape as every other network wait in
+// this file — fine since uiTask keeps rendering independently regardless.
+void syncTimeOverNtp() {
+  configTime(0, 0, "pool.ntp.org", "time.google.com");
+  struct tm timeInfo;
+  if (getLocalTime(&timeInfo, 10000)) {
+    logSetTimeSynced(true);
+    LOG_I("net", "NTP time synced: %04d-%02d-%02d %02d:%02d:%02d UTC\n", timeInfo.tm_year + 1900,
+          timeInfo.tm_mon + 1, timeInfo.tm_mday, timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
+  } else {
+    LOG_W("net", "NTP sync timed out - log timestamps will show uptime instead of wall-clock time\n");
+  }
 }
 
 // Called right before each weather fetch (from settleWifiLink()) so a
@@ -93,8 +114,8 @@ void connectWifiOrRetryBoot() {
 // just the initial join.
 void logWifiState() {
   const wl_status_t status = WiFi.status();
-  Serial.printf("[net] WiFi state: status=%d (%s) rssi=%d dBm\n", status,
-                status == WL_CONNECTED ? "connected" : "NOT connected", WiFi.RSSI());
+  LOG_D("net", "WiFi state: status=%d (%s) rssi=%d dBm\n", status, status == WL_CONNECTED ? "connected" : "NOT connected",
+        WiFi.RSSI());
 }
 
 void resolveLocationIfNeeded() {
@@ -161,9 +182,8 @@ void settleWifiLink() {
   // times) — logging the largest contiguous internal/DMA-capable block too,
   // since that's what a tiny scratch-buffer allocation actually needs and
   // fragmentation could starve it even with plenty of free heap overall.
-  Serial.printf("[net] free heap: %u (largest internal block: %u, largest DMA block: %u)\n", ESP.getFreeHeap(),
-                heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
-                heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
+  LOG_D("net", "free heap: %u (largest internal block: %u, largest DMA block: %u)\n", ESP.getFreeHeap(),
+        heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
   logWifiState();
   delay(kWifiSettleMs);
 }
@@ -224,11 +244,11 @@ void fetchAndLogForecasts() {
   if (fetchHourlyForecast(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
                            configStore.unitsImperial(), hourly, hourlyCount, hourlyError, hourlyRetryable)) {
     for (size_t i = 0; i < hourlyCount; i++) {
-      Serial.printf("[net] hourly[%u]: %s %d %s\n", static_cast<unsigned>(i), hourly[i].displayDateTime.c_str(),
-                    static_cast<int>(hourly[i].temperature), hourly[i].condition.type.c_str());
+      LOG_D("net", "hourly[%u]: %s %d %s\n", static_cast<unsigned>(i), hourly[i].displayDateTime.c_str(),
+            static_cast<int>(hourly[i].temperature), hourly[i].condition.type.c_str());
     }
   } else {
-    Serial.printf("[net] hourly forecast failed: %s\n", hourlyError.c_str());
+    LOG_E("net", "hourly forecast failed: %s\n", hourlyError.c_str());
   }
 
   settleWifiLink();
@@ -240,18 +260,19 @@ void fetchAndLogForecasts() {
   if (fetchDailyForecast(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
                           configStore.unitsImperial(), daily, dailyCount, dailyError, dailyRetryable)) {
     for (size_t i = 0; i < dailyCount; i++) {
-      Serial.printf("[net] daily[%u]: %s %d/%d %s\n", static_cast<unsigned>(i), daily[i].displayDate.c_str(),
-                    static_cast<int>(daily[i].maxTemperature), static_cast<int>(daily[i].minTemperature),
-                    daily[i].daytimeCondition.type.c_str());
+      LOG_D("net", "daily[%u]: %s %d/%d %s\n", static_cast<unsigned>(i), daily[i].displayDate.c_str(),
+            static_cast<int>(daily[i].maxTemperature), static_cast<int>(daily[i].minTemperature),
+            daily[i].daytimeCondition.type.c_str());
     }
   } else {
-    Serial.printf("[net] daily forecast failed: %s\n", dailyError.c_str());
+    LOG_E("net", "daily forecast failed: %s\n", dailyError.c_str());
   }
 }
 
 void netTaskFn(void *) {
   logHeapStats("netTaskFn start");
   connectWifiOrRetryBoot();
+  syncTimeOverNtp();
   resolveLocationIfNeeded();
 
   // Location resolution can fail (bad API key, no results for the query,

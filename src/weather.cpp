@@ -6,6 +6,7 @@
 
 #include "http_json_client.h"
 #include "json_arena_allocator.h"
+#include "logging.h"
 
 namespace {
 
@@ -21,8 +22,8 @@ constexpr const char *kHost = "https://weather.googleapis.com";
 constexpr size_t kJsonArenaBytes = 6144;
 
 void logArenaUsage(const char *label, size_t bytesUsed, bool arenaOverflowed) {
-  Serial.printf("[weather] %s JSON arena: %u bytes used of %u, overflowed=%d\n", label,
-                static_cast<unsigned>(bytesUsed), static_cast<unsigned>(kJsonArenaBytes), arenaOverflowed);
+  LOG_D("weather", "%s JSON arena: %u bytes used of %u, overflowed=%d\n", label, static_cast<unsigned>(bytesUsed),
+        static_cast<unsigned>(kJsonArenaBytes), arenaOverflowed);
 }
 
 // Weather API errors follow Google Cloud's standard error envelope —
@@ -117,7 +118,7 @@ bool getJson(const String &url, JsonDocument &doc, String &outError, bool &outRe
   int httpCode = 0;
   String body;
   if (httpGetJson(http, client, url, doc, httpCode, body, filter)) {
-    Serial.printf("[weather] HTTP status: %d\n", httpCode);
+    LOG_D("weather", "HTTP status: %d\n", httpCode);
     return true;
   }
 
@@ -138,12 +139,12 @@ bool getJson(const String &url, JsonDocument &doc, String &outError, bool &outRe
   if (httpCode == 0) {
     outError = "Could not start the request.";
     outRetryable = true;
-    Serial.println("[weather] http.begin() failed");
+    LOG_E("weather", "http.begin() failed\n");
     return false;
   }
 
-  Serial.printf("[weather] HTTP status: %d\n", httpCode);
-  Serial.printf("[weather] body: %s\n", body.c_str());
+  LOG_W("weather", "HTTP status: %d\n", httpCode);
+  LOG_W("weather", "body: %s\n", body.c_str());
 
   if (httpCode != HTTP_CODE_OK) {
     JsonDocument errDoc;
@@ -249,9 +250,8 @@ bool fetchCurrentConditions(const String &apiKey, float lat, float lon, bool uni
   out.windGust = doc["wind"]["gust"]["value"] | 0.0f;
   out.cloudCoverPercent = doc["cloudCover"] | 0;
 
-  Serial.printf("[weather] current: %s, %d%% (feels %d), humidity %d%%\n", out.condition.type.c_str(),
-                static_cast<int>(out.temperature), static_cast<int>(out.feelsLikeTemperature),
-                out.relativeHumidity);
+  LOG_I("weather", "current: %s, %d%% (feels %d), humidity %d%%\n", out.condition.type.c_str(),
+        static_cast<int>(out.temperature), static_cast<int>(out.feelsLikeTemperature), out.relativeHumidity);
   return true;
 }
 
@@ -295,7 +295,7 @@ bool fetchHourlyForecast(const String &apiKey, float lat, float lon, bool unitsI
     point.precipitationProbabilityPercent = hour["precipitation"]["probability"]["percent"] | 0;
   }
 
-  Serial.printf("[weather] hourly: %u points\n", static_cast<unsigned>(outCount));
+  LOG_I("weather", "hourly: %u points\n", static_cast<unsigned>(outCount));
   return true;
 }
 
@@ -374,10 +374,10 @@ bool fetchDailyForecast(const String &apiKey, float lat, float lon, bool unitsIm
     } else {
       // A partial (4-day) forecast beats none — don't fail the whole call
       // over the second page.
-      Serial.printf("[weather] daily page 2 failed: %s\n", secondError.c_str());
+      LOG_E("weather", "daily page 2 failed: %s\n", secondError.c_str());
     }
   }
 
-  Serial.printf("[weather] daily: %u points\n", static_cast<unsigned>(outCount));
+  LOG_I("weather", "daily: %u points\n", static_cast<unsigned>(outCount));
   return true;
 }
