@@ -76,6 +76,25 @@ void connectWifiOrRetryBoot() {
     delay(4000);
     ESP.restart();
   }
+
+  // Confirms WiFi association is actually healthy at this point — the
+  // esp-aes/TLS-handshake failures logged around HTTPS calls (see
+  // docs/hardware.md) happen inside ssl_starttls_handshake(), which only
+  // runs after the underlying TCP socket already connected, so those
+  // failures shouldn't mean WiFi itself is bad. Logging this here (and
+  // again in logWifiState() below, before each fetch) makes that visible
+  // in the log instead of having to infer it.
+  Serial.printf("[net] WiFi connected: ssid=%s ip=%s rssi=%d dBm\n", WiFi.SSID().c_str(),
+                WiFi.localIP().toString().c_str(), WiFi.RSSI());
+}
+
+// Called right before each weather fetch (from settleWifiLink()) so a
+// mid-session WiFi drop between requests shows up in the log too, not
+// just the initial join.
+void logWifiState() {
+  const wl_status_t status = WiFi.status();
+  Serial.printf("[net] WiFi state: status=%d (%s) rssi=%d dBm\n", status,
+                status == WL_CONNECTED ? "connected" : "NOT connected", WiFi.RSSI());
 }
 
 void resolveLocationIfNeeded() {
@@ -145,6 +164,7 @@ void settleWifiLink() {
   Serial.printf("[net] free heap: %u (largest internal block: %u, largest DMA block: %u)\n", ESP.getFreeHeap(),
                 heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
                 heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
+  logWifiState();
   delay(kWifiSettleMs);
 }
 
