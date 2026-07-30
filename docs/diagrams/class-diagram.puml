@@ -1,0 +1,119 @@
+@startuml class-diagram
+!theme plain
+skinparam backgroundColor white
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam class {
+  BackgroundColor #F4F1EA
+  BorderColor #6B5B3E
+  ArrowColor #6B5B3E
+}
+skinparam stereotypeCBackgroundColor #D99A4E
+
+title Proposed module classes — solid = exists today, dashed = proposed
+
+class NetTask <<FreeRTOS task, core 1>> {
+  + run()
+}
+
+class UiTask <<FreeRTOS task, core 0>> {
+  + run()
+}
+
+class ConfigStore {
+  + begin()
+  + isProvisioned() : bool
+  + wifiSsid() : String
+  + wifiPassword() : String
+  + locationQuery() : String
+  + apiKey() : String
+  + unitsImperial() : bool
+  + hasLocation() : bool
+  + latitude() : float
+  + longitude() : float
+  + saveProvisioning(ssid, password, locationQuery, apiKey, unitsImperial)
+  + saveLocation(lat, lon)
+  + reset()
+}
+
+class ProvisioningServer <<free functions>> {
+  + runProvisioning(config : ConfigStore&)
+}
+
+class "HttpJsonClient" as HttpJsonClient <<proposed, free functions>> #line.dashed {
+  + getJson(url, doc : JsonDocument&, outError, outRetryable) : bool
+}
+
+class GeocodeClient <<free functions>> {
+  + geocodeLocation(query, apiKey, outLat, outLon, outError, outRetryable) : bool
+}
+
+class WeatherClient <<free functions>> {
+  + fetchCurrentConditions(apiKey, lat, lon, unitsImperial, out, outError, outRetryable) : bool
+  + fetchHourlyForecast(..., out[8], outCount, outError, outRetryable) : bool
+  + fetchDailyForecast(..., out[7], outCount, outError, outRetryable) : bool
+  - appendDailyPoints(days, out, outCount)
+  - sharedClient() : WiFiClientSecure&
+}
+
+class CurrentConditions <<struct>> {
+  temperature : float
+  feelsLikeTemperature : float
+  relativeHumidity : int
+  condition : WeatherCondition
+  ...
+}
+
+class HourlyForecastPoint <<struct>> {
+  displayDateTime : String
+  temperature : float
+  condition : WeatherCondition
+}
+
+class DailyForecastPoint <<struct>> {
+  displayDate : String
+  maxTemperature : float
+  minTemperature : float
+  daytimeCondition : WeatherCondition
+}
+
+class "SharedState" as SharedState <<proposed, mutex-protected>> #line.dashed {
+  - mutex_ : SemaphoreHandle_t
+  - current_ : CurrentConditions
+  - hourly_ : HourlyForecastPoint[8]
+  - daily_ : DailyForecastPoint[7]
+  + publish(current, hourly, daily)
+  + tryConsume(out) : bool
+}
+
+class "DisplayManager" as DisplayManager <<proposed>> #line.dashed {
+  + initDisplay()
+  + pumpLvgl()
+  - lvglFlushCb()
+  - lvglTouchReadCb()
+}
+
+class "BootUi" as BootUi <<proposed>> #line.dashed {
+  + showStatusScreen(title, subtitle, loading)
+  + describeWifiStatus(status) : const char*
+}
+
+NetTask --> ProvisioningServer : first boot only
+NetTask --> ConfigStore : read/write settings
+NetTask --> GeocodeClient : resolve location once
+NetTask --> WeatherClient : poll on a timer
+NetTask --> SharedState : publish()
+
+GeocodeClient --> HttpJsonClient : uses
+WeatherClient --> HttpJsonClient : uses
+WeatherClient ..> CurrentConditions : fills
+WeatherClient ..> HourlyForecastPoint : fills
+WeatherClient ..> DailyForecastPoint : fills
+ProvisioningServer --> ConfigStore : saveProvisioning()
+
+UiTask --> DisplayManager : owns LVGL/touch
+UiTask --> BootUi : renders boot/status screens
+UiTask --> SharedState : tryConsume()
+
+@enduml

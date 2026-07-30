@@ -1,0 +1,66 @@
+@startuml block-diagram
+!theme plain
+skinparam backgroundColor white
+skinparam componentStyle rectangle
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam component {
+  BackgroundColor #F4F1EA
+  BorderColor #6B5B3E
+  ArrowColor #6B5B3E
+}
+skinparam package {
+  BackgroundColor #FBFAF7
+  BorderColor #A89E8C
+}
+
+title Proposed firmware architecture — module + task split (ESP32-P4, dual-core)
+
+package "Core 0 — uiTask" as UICore {
+  [display.{h,cpp}\n(LVGL/M5GFX init, flush + touch cbs, pumpLvgl)] as Display
+  [boot_ui.{h,cpp}\n(status screen, wifi-error text)] as BootUi
+  [dashboard UI\n(not built yet)] as Dashboard
+  BootUi --> Display
+  Dashboard --> Display
+}
+
+package "Shared state" as Shared {
+  [SharedState\n(mutex or FreeRTOS queue)] as SharedState
+}
+
+package "Core 1 — netTask" as NetCore {
+  [provisioning.{h,cpp}\n(AP + setup web server)] as Provisioning
+  [config_store.{h,cpp}\n(NVS-backed settings)] as ConfigStore
+  [http_json_client.{h,cpp}\n(proposed: shared GET+dechunk+parse)] as HttpClient
+  [geocode.{h,cpp}] as Geocode
+  [weather.{h,cpp}\n(current/hourly/daily)] as Weather
+
+  Provisioning --> ConfigStore
+  Geocode --> ConfigStore
+  Weather --> ConfigStore
+  Geocode --> HttpClient
+  Weather --> HttpClient
+}
+
+[main.cpp\n(bootstrap only: create uiTask + netTask)] as Main
+
+Main --> UICore : xTaskCreatePinnedToCore(core 0)
+Main --> NetCore : xTaskCreatePinnedToCore(core 1)
+NetCore --> SharedState : publish fetched\nconditions/forecast
+SharedState --> UICore : consumed each\nLVGL tick
+
+note bottom of NetCore
+  Owns everything that blocks:
+  WiFi connect, provisioning,
+  geocoding, weather fetches.
+  Free to block — off the render path.
+end note
+
+note bottom of UICore
+  Never blocks on network I/O.
+  Renders whatever SharedState
+  last published.
+end note
+
+@enduml

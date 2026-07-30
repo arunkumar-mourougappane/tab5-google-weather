@@ -58,6 +58,7 @@ Open [docs/mockups/index.html](docs/mockups/index.html) locally, or browse the [
 - [docs/google-weather-api.md](docs/google-weather-api.md) — endpoints, auth, response schema, quota/pricing, location/provisioning flow
 - [docs/rendering.md](docs/rendering.md) — LVGL + M5GFX approach for fast GUI response
 - [docs/platformio-and-ci.md](docs/platformio-and-ci.md) — board config and GitHub Actions build
+- [docs/firmware-architecture.md](docs/firmware-architecture.md) — module boundaries, stack-vs-heap JSON parsing, dual-core task-split proposal
 
 ## License
 

@@ -1,0 +1,101 @@
+@startuml sequence-diagram
+!theme plain
+skinparam backgroundColor white
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam sequence {
+  ArrowColor #6B5B3E
+  ActorBorderColor #6B5B3E
+  LifeLineBorderColor #A89E8C
+  ParticipantBorderColor #6B5B3E
+  ParticipantBackgroundColor #F4F1EA
+  BoxBorderColor #A89E8C
+  BoxBackgroundColor #FBFAF7
+}
+
+title Proposed boot + refresh flow — uiTask (core 0) parallel to netTask (core 1)
+
+participant "main.cpp" as Main
+
+box "Core 0" #FBFAF7
+  participant "uiTask" as Ui
+  participant "DisplayManager\n+ BootUi/Dashboard" as Disp
+end box
+
+participant "SharedState\n(mutex-protected)" as Shared
+
+box "Core 1" #FBFAF7
+  participant "netTask" as Net
+  participant "ConfigStore" as Cfg
+  participant "ProvisioningServer" as Prov
+  participant "GeocodeClient" as Geo
+  participant "WeatherClient" as Wx
+end box
+
+Main -> Ui ** : xTaskCreatePinnedToCore(core 0)
+Main -> Net ** : xTaskCreatePinnedToCore(core 1)
+
+activate Ui
+Ui -> Disp : initDisplay()
+Ui -> Disp : showStatusScreen("Starting...")
+
+activate Net
+Net -> Cfg : begin()
+
+alt not yet provisioned
+  Net -> Prov : runProvisioning(config)
+  note right of Prov
+    Blocks this task only —
+    AP + DNS + HTTP setup page.
+    uiTask keeps rendering.
+  end note
+  Prov --> Net : setup complete
+  Net -> Net : ESP.restart()
+else already provisioned
+  Net -> Net : connectWifiOrRetryBoot()
+  loop until connected or timeout
+    Net -> Shared : publish("Connecting to Wi-Fi")
+  end
+
+  alt no saved lat/lon yet
+    Net -> Geo : geocodeLocation(query, apiKey)
+    Geo --> Net : lat, lon
+    Net -> Cfg : saveLocation(lat, lon)
+  end
+
+  loop every refresh interval (e.g. 10 min)
+    Net -> Wx : fetchCurrentConditions()
+    Wx --> Net : CurrentConditions
+    Net -> Wx : fetchHourlyForecast()
+    Wx --> Net : HourlyForecastPoint[8]
+    Net -> Wx : fetchDailyForecast()
+    note right of Wx
+      Split into 2 pages
+      (4 days, then 3) —
+      see hardware.md
+    end note
+    Wx --> Net : DailyForecastPoint[7]
+
+    Net -> Shared : publish(current, hourly, daily)
+    activate Shared
+    Shared -> Shared : lock mutex, copy in, unlock
+    deactivate Shared
+  end
+end
+
+par uiTask render loop (continuous, never blocked by netTask)
+  loop every LVGL tick
+    Ui -> Ui : pumpLvgl()
+    Ui -> Shared : tryConsume(out)
+    activate Shared
+    Shared -> Shared : lock mutex, copy out, unlock
+    deactivate Shared
+    Shared --> Ui : true if new data
+    opt new data available
+      Ui -> Disp : render dashboard/hourly/daily
+    end
+  end
+end
+
+@enduml
