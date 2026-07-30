@@ -20,6 +20,18 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+// `filter`, if non-null, is passed to deserializeJson() as a
+// DeserializationOption::Filter — the DOM parser stores every field in
+// the response by default regardless of whether the caller ever reads
+// it, so a response with many more fields per record than the caller
+// actually parses (confirmed on hardware: the Weather API's hourly
+// forecast has ~20 fields/hour, most unused by fetchHourlyForecast())
+// can overflow a `doc` sized against only the fields actually needed.
+// Filtering at parse time keeps the parsed document (and therefore the
+// arena backing it, if `doc` is a StackJsonDocument — see
+// json_arena_allocator.h) sized against what's actually used, not
+// everything the API happens to return.
+//
 // On success: returns true, `doc` populated, outHttpCode == 200.
 // On failure: returns false.
 //   - outHttpCode == 0 means the request itself couldn't be started
@@ -32,4 +44,4 @@
 //     against describeStatus() in geocode.cpp), which is why that mapping
 //     stays with each caller rather than living here.
 bool httpGetJson(HTTPClient &http, WiFiClientSecure &client, const String &url, JsonDocument &doc, int &outHttpCode,
-                  String &outBody);
+                  String &outBody, const JsonDocument *filter = nullptr);

@@ -1,7 +1,7 @@
 #include "http_json_client.h"
 
 bool httpGetJson(HTTPClient &http, WiFiClientSecure &client, const String &url, JsonDocument &doc, int &outHttpCode,
-                  String &outBody) {
+                  String &outBody, const JsonDocument *filter) {
   outHttpCode = 0;
   outBody = "";
 
@@ -20,7 +20,8 @@ bool httpGetJson(HTTPClient &http, WiFiClientSecure &client, const String &url, 
   // See http_json_client.h: getString() dechunks, getStream() doesn't.
   const String body = http.getString();
   http.end();
-  const DeserializationError err = deserializeJson(doc, body);
+  const DeserializationError err =
+      filter ? deserializeJson(doc, body, DeserializationOption::Filter(*filter)) : deserializeJson(doc, body);
   if (err) {
     outBody = body;
     return false;

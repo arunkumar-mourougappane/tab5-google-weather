@@ -107,7 +107,8 @@ WiFiClientSecure &sharedClient() {
 // are shared with geocode.cpp; this API's error-envelope interpretation
 // (describeError() above) isn't, since it's specific to Google Cloud's
 // error shape.
-bool getJson(const String &url, JsonDocument &doc, String &outError, bool &outRetryable) {
+bool getJson(const String &url, JsonDocument &doc, String &outError, bool &outRetryable,
+             const JsonDocument *filter = nullptr) {
   WiFiClientSecure &client = sharedClient();
 
   static HTTPClient http;
@@ -115,7 +116,7 @@ bool getJson(const String &url, JsonDocument &doc, String &outError, bool &outRe
 
   int httpCode = 0;
   String body;
-  if (httpGetJson(http, client, url, doc, httpCode, body)) {
+  if (httpGetJson(http, client, url, doc, httpCode, body, filter)) {
     Serial.printf("[weather] HTTP status: %d\n", httpCode);
     return true;
   }
@@ -173,6 +174,15 @@ WeatherCondition parseCondition(JsonVariantConst v) {
   return c;
 }
 
+// Marks the subset of a weatherCondition object this project actually
+// reads (see parseCondition() above) — used to build each endpoint's
+// parse filter below.
+void filterWeatherCondition(JsonObject condition) {
+  condition["type"] = true;
+  condition["description"]["text"] = true;
+  condition["iconBaseUri"] = true;
+}
+
 void appendDailyPoints(JsonArrayConst days, DailyForecastPoint out[kMaxDailyPoints], size_t &outCount) {
   for (JsonVariantConst day : days) {
     if (outCount >= kMaxDailyPoints) {
@@ -199,9 +209,29 @@ bool fetchCurrentConditions(const String &apiKey, float lat, float lon, bool uni
   String url = String(kHost) + "/v1/currentConditions:lookup?key=" + apiKey + "&location.latitude=" +
                String(lat, 6) + "&location.longitude=" + String(lon, 6) + "&unitsSystem=" + unitsParam(unitsImperial);
 
+  // See http_json_client.h: the API returns far more fields per response
+  // than this function reads (dewPoint, heatIndex, airPressure, ... —
+  // confirmed on hardware), and the DOM parser stores all of them by
+  // default. Filtering to just what's read below keeps the parsed
+  // document small enough for the stack arena regardless of how many
+  // extra fields Google's response happens to include.
+  JsonDocument filter;
+  filter["currentTime"] = true;
+  filter["isDaytime"] = true;
+  filterWeatherCondition(filter["weatherCondition"].to<JsonObject>());
+  filter["temperature"]["degrees"] = true;
+  filter["feelsLikeTemperature"]["degrees"] = true;
+  filter["relativeHumidity"] = true;
+  filter["uvIndex"] = true;
+  filter["precipitation"]["probability"]["percent"] = true;
+  filter["wind"]["speed"]["value"] = true;
+  filter["wind"]["direction"]["cardinal"] = true;
+  filter["wind"]["gust"]["value"] = true;
+  filter["cloudCover"] = true;
+
   StackJsonDocument<kJsonArenaBytes> stackDoc;
   JsonDocument &doc = stackDoc.doc();
-  if (!getJson(url, doc, outError, outRetryable)) {
+  if (!getJson(url, doc, outError, outRetryable, &filter)) {
     return false;
   }
   logArenaUsage("current", stackDoc.bytesUsed(), stackDoc.overflowed());
@@ -235,9 +265,20 @@ bool fetchHourlyForecast(const String &apiKey, float lat, float lon, bool unitsI
                "&unitsSystem=" + unitsParam(unitsImperial) + "&hours=" + String(kMaxHourlyPoints) +
                "&pageSize=" + String(kMaxHourlyPoints);
 
+  // See fetchCurrentConditions()'s filter comment — the same DOM-parses-
+  // everything issue is worse per-record here (~20 fields/hour in the raw
+  // response vs. the handful read below), and 8 records made it overflow
+  // the arena on real hardware before this filter was added.
+  JsonDocument filter;
+  JsonObject hour = filter["forecastHours"][0].to<JsonObject>();
+  hour["displayDateTime"]["hours"] = true;
+  filterWeatherCondition(hour["weatherCondition"].to<JsonObject>());
+  hour["temperature"]["degrees"] = true;
+  hour["precipitation"]["probability"]["percent"] = true;
+
   StackJsonDocument<kJsonArenaBytes> stackDoc;
   JsonDocument &doc = stackDoc.doc();
-  if (!getJson(url, doc, outError, outRetryable)) {
+  if (!getJson(url, doc, outError, outRetryable, &filter)) {
     return false;
   }
   logArenaUsage("hourly", stackDoc.bytesUsed(), stackDoc.overflowed());
@@ -280,6 +321,21 @@ bool fetchDailyForecast(const String &apiKey, float lat, float lon, bool unitsIm
                           String(lat, 6) + "&location.longitude=" + String(lon, 6) +
                           "&unitsSystem=" + unitsParam(unitsImperial) + "&days=" + String(kMaxDailyPoints);
 
+  // See fetchCurrentConditions()'s filter comment — the daily forecast's
+  // day+night split and sun/moon events make its per-record field count
+  // the largest of the three endpoints; filtering matters here even more
+  // than for hourly.
+  JsonDocument filter;
+  filter["nextPageToken"] = true;
+  JsonObject day = filter["forecastDays"][0].to<JsonObject>();
+  day["displayDate"]["year"] = true;
+  day["displayDate"]["month"] = true;
+  day["displayDate"]["day"] = true;
+  filterWeatherCondition(day["daytimeForecast"]["weatherCondition"].to<JsonObject>());
+  day["maxTemperature"]["degrees"] = true;
+  day["minTemperature"]["degrees"] = true;
+  day["daytimeForecast"]["precipitation"]["probability"]["percent"] = true;
+
   // page-1's JsonDocument/body String are scoped to this block so they're
   // freed before page 2's request, not held alive across it. Once, on real
   // hardware, page 2 hit `esp-aes: Failed to allocate memory for start
@@ -296,7 +352,7 @@ bool fetchDailyForecast(const String &apiKey, float lat, float lon, bool unitsIm
   {
     StackJsonDocument<kJsonArenaBytes> stackDoc;
     JsonDocument &doc = stackDoc.doc();
-    if (!getJson(baseUrl + "&pageSize=" + String(kFirstPageDays), doc, outError, outRetryable)) {
+    if (!getJson(baseUrl + "&pageSize=" + String(kFirstPageDays), doc, outError, outRetryable, &filter)) {
       return false;
     }
     logArenaUsage("daily page 1", stackDoc.bytesUsed(), stackDoc.overflowed());
@@ -312,7 +368,7 @@ bool fetchDailyForecast(const String &apiKey, float lat, float lon, bool unitsIm
     String secondError;
     bool secondRetryable = true;
     const String url2 = baseUrl + "&pageSize=" + String(kMaxDailyPoints - outCount) + "&pageToken=" + pageToken;
-    if (getJson(url2, doc2, secondError, secondRetryable)) {
+    if (getJson(url2, doc2, secondError, secondRetryable, &filter)) {
       logArenaUsage("daily page 2", stackDoc2.bytesUsed(), stackDoc2.overflowed());
       appendDailyPoints(doc2["forecastDays"].as<JsonArrayConst>(), out, outCount);
     } else {
