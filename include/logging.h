@@ -18,6 +18,12 @@
 // (docs/hardware.md, docs/firmware-architecture.md) and a new
 // cross-cutting utility used everywhere is exactly the kind of thing that
 // could quietly undo that.
+//
+// Being two separate Serial calls instead of one is exactly why the
+// LOG_* macros wrap them in logLock()/logUnlock(): confirmed on hardware
+// that uiTaskFn (core 0) and netTaskFn (core 1) logging at nearly the
+// same instant (they both log something right at startup) interleaved
+// their prefix/message pairs without a lock, garbling both lines.
 #pragma once
 
 #include <Arduino.h>
@@ -43,43 +49,57 @@ bool logTimeIsSynced();
 void logSetMinLevel(LogLevel level);
 bool logLevelEnabled(LogLevel level);
 
+// Held across a LOG_* call's logPrefix() + Serial.printf(fmt, ...) pair so
+// the two tasks' log lines can't interleave. Not intended to be called
+// directly outside the macros below.
+void logLock();
+void logUnlock();
+
 // Prints `<timestamp> [<level>][<tag>] ` with no trailing newline or
 // space-separated message — callers finish the line themselves via
 // Serial.printf(fmt, ...), same as every pre-existing Serial.printf()
 // call in this codebase already does (each ends its own format string
 // with "\n"). Not intended to be called directly — use the LOG_* macros
-// below, which pair this with the caller's own Serial.printf() and the
-// level-gating check above.
+// below, which pair this with the caller's own Serial.printf(), the
+// level-gating check, and the lock above.
 void logPrefix(LogLevel level, const char *tag);
 
-#define LOG_E(tag, fmt, ...)                             \
-  do {                                                   \
-    if (logLevelEnabled(LogLevel::kError)) {              \
-      logPrefix(LogLevel::kError, tag);                   \
-      Serial.printf(fmt, ##__VA_ARGS__);                  \
-    }                                                      \
+#define LOG_E(tag, fmt, ...)                    \
+  do {                                          \
+    if (logLevelEnabled(LogLevel::kError)) {    \
+      logLock();                                \
+      logPrefix(LogLevel::kError, tag);         \
+      Serial.printf(fmt, ##__VA_ARGS__);        \
+      logUnlock();                              \
+    }                                            \
   } while (0)
 
-#define LOG_W(tag, fmt, ...)                             \
-  do {                                                   \
-    if (logLevelEnabled(LogLevel::kWarn)) {               \
-      logPrefix(LogLevel::kWarn, tag);                    \
-      Serial.printf(fmt, ##__VA_ARGS__);                  \
-    }                                                      \
+#define LOG_W(tag, fmt, ...)                    \
+  do {                                          \
+    if (logLevelEnabled(LogLevel::kWarn)) {     \
+      logLock();                                \
+      logPrefix(LogLevel::kWarn, tag);          \
+      Serial.printf(fmt, ##__VA_ARGS__);        \
+      logUnlock();                              \
+    }                                            \
   } while (0)
 
-#define LOG_I(tag, fmt, ...)                             \
-  do {                                                   \
-    if (logLevelEnabled(LogLevel::kInfo)) {               \
-      logPrefix(LogLevel::kInfo, tag);                    \
-      Serial.printf(fmt, ##__VA_ARGS__);                  \
-    }                                                      \
+#define LOG_I(tag, fmt, ...)                    \
+  do {                                          \
+    if (logLevelEnabled(LogLevel::kInfo)) {     \
+      logLock();                                \
+      logPrefix(LogLevel::kInfo, tag);          \
+      Serial.printf(fmt, ##__VA_ARGS__);        \
+      logUnlock();                              \
+    }                                            \
   } while (0)
 
-#define LOG_D(tag, fmt, ...)                             \
-  do {                                                   \
-    if (logLevelEnabled(LogLevel::kDebug)) {              \
-      logPrefix(LogLevel::kDebug, tag);                   \
-      Serial.printf(fmt, ##__VA_ARGS__);                  \
-    }                                                      \
+#define LOG_D(tag, fmt, ...)                    \
+  do {                                          \
+    if (logLevelEnabled(LogLevel::kDebug)) {    \
+      logLock();                                \
+      logPrefix(LogLevel::kDebug, tag);         \
+      Serial.printf(fmt, ##__VA_ARGS__);        \
+      logUnlock();                              \
+    }                                            \
   } while (0)

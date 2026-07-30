@@ -1,11 +1,28 @@
 #include "logging.h"
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <time.h>
 
 namespace {
 
 bool g_timeSynced = false;
 LogLevel g_minLevel = LogLevel::kDebug;
+
+// Guards the whole prefix+message pair a LOG_* call makes (see
+// logLock()/logUnlock()) — without this, uiTaskFn (core 0) and netTaskFn
+// (core 1) logging at nearly the same instant (confirmed on hardware,
+// right at boot: "uiTaskFn start"/"netTaskFn start" land together) can
+// interleave their two separate Serial calls, garbling both lines. A
+// function-local static is safe to lazily create here specifically
+// because logging is never used before setup() starts running — and
+// setup() itself already executes inside a FreeRTOS task (Arduino's
+// loopTask), so the scheduler (and thus xSemaphoreCreateMutex()) is
+// already up by the time any LOG_* call can happen.
+SemaphoreHandle_t logMutex() {
+  static SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
+  return mutex;
+}
 
 const char *levelTag(LogLevel level) {
   switch (level) {
@@ -41,6 +58,14 @@ bool logLevelEnabled(LogLevel level) {
   // minimum — e.g. with g_minLevel == kInfo, kError/kWarn/kInfo are
   // enabled but kDebug is not.
   return static_cast<uint8_t>(level) <= static_cast<uint8_t>(g_minLevel);
+}
+
+void logLock() {
+  xSemaphoreTake(logMutex(), portMAX_DELAY);
+}
+
+void logUnlock() {
+  xSemaphoreGive(logMutex());
 }
 
 void logPrefix(LogLevel level, const char *tag) {

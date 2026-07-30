@@ -56,11 +56,20 @@ void logHeapStats(const char *label) {
 // — which the SNTP client calls internally once synced, so this needs no
 // explicit "write" step of our own — persists the synced time into
 // RTC-retained memory as a side effect, the same mechanism deep-sleep
-// wake relies on for time continuity. That survives a software reset,
-// panic reboot, or (per real hardware this session) a brownout-triggered
-// restart, since none of those cut power to the RTC domain — but not an
-// actual power-on reset (unplugged/battery disconnected), where RTC
-// memory is gone and this correctly reads as invalid.
+// wake relies on for time continuity, and that's documented to survive a
+// plain software reset (esp_restart()) or panic reboot.
+//
+// Does NOT survive a brownout-triggered reset on this hardware, though —
+// confirmed on real hardware, contradicting what this comment originally
+// claimed: a boot immediately following a brownout reset (`E BOD:
+// Brownout detector was triggered` in the log) still read as an unset
+// clock here, meaning the BOD reset path on this chip resets the RTC
+// domain too, unlike a plain SW/panic reset. Not something worth working
+// around — this function still does exactly what its name says (checks
+// whether the clock looks valid, from whatever cause), it just won't
+// fire as often across this project's brownout-heavy test cycles as
+// originally assumed. A genuine power-on reset (unplugged/battery
+// disconnected) also reads as invalid, as expected.
 bool rtcTimeLooksValid() {
   // 2024-01-01T00:00:00Z: comfortably before this project existed, and
   // comfortably after what an unset clock reads as (either the 1970
