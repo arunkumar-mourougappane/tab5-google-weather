@@ -24,9 +24,15 @@
 
 enum class LogLevel : uint8_t { kError, kWarn, kInfo, kDebug };
 
-// Called once, after main.cpp's NTP sync attempt finishes (success or
-// timeout) — see syncTimeOverNtp(). Safe to call from any task.
+// Called once, after main.cpp determines wall-clock time is available —
+// either the RTC-backed system clock already looked valid at boot (an
+// earlier session's NTP sync survived the reset), or a fresh NTP sync
+// completed. Safe to call from any task.
 void logSetTimeSynced(bool synced);
+
+// True once logSetTimeSynced(true) has been called — main.cpp checks this
+// before bothering with a network-dependent NTP sync at all.
+bool logTimeIsSynced();
 
 // Minimum level actually printed — a call below this level does no
 // Serial I/O at all, not just hidden formatting. Defaults to kDebug (show

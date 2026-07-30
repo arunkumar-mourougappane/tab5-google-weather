@@ -27,6 +27,10 @@ void logSetTimeSynced(bool synced) {
   g_timeSynced = synced;
 }
 
+bool logTimeIsSynced() {
+  return g_timeSynced;
+}
+
 void logSetMinLevel(LogLevel level) {
   g_minLevel = level;
 }

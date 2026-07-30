@@ -21,6 +21,7 @@
 #include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <time.h>
 
 #include "boot_ui.h"
 #include "config_store.h"
@@ -47,6 +48,26 @@ SharedState sharedState;
 void logHeapStats(const char *label) {
   LOG_D("heap", "%s: free=%u largest_internal=%u largest_dma=%u\n", label, ESP.getFreeHeap(),
         heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
+}
+
+// A boot-time system clock that already reads as a real date (not the
+// 1970 epoch, or close to it, that an unset clock shows) means an
+// earlier session's NTP sync survived this reset. ESP-IDF's settimeofday()
+// — which the SNTP client calls internally once synced, so this needs no
+// explicit "write" step of our own — persists the synced time into
+// RTC-retained memory as a side effect, the same mechanism deep-sleep
+// wake relies on for time continuity. That survives a software reset,
+// panic reboot, or (per real hardware this session) a brownout-triggered
+// restart, since none of those cut power to the RTC domain — but not an
+// actual power-on reset (unplugged/battery disconnected), where RTC
+// memory is gone and this correctly reads as invalid.
+bool rtcTimeLooksValid() {
+  // 2024-01-01T00:00:00Z: comfortably before this project existed, and
+  // comfortably after what an unset clock reads as (either the 1970
+  // epoch exactly, or a small offset from it based on uptime alone) —
+  // any real synced time will be well past this floor for years.
+  constexpr time_t kSaneEpochFloor = 1704067200;
+  return time(nullptr) >= kSaneEpochFloor;
 }
 
 // ---------------------------------------------------------------------
@@ -272,7 +293,16 @@ void fetchAndLogForecasts() {
 void netTaskFn(void *) {
   logHeapStats("netTaskFn start");
   connectWifiOrRetryBoot();
-  syncTimeOverNtp();
+  // Skipped if setup() already found a valid RTC-persisted time from an
+  // earlier session (see rtcTimeLooksValid()) — no reason to spend a
+  // network round-trip re-confirming a clock that's almost certainly
+  // still correct. Known simplification: this means clock drift across
+  // many resets without an intervening power loss is never corrected,
+  // only re-synced from scratch after one. Acceptable for what's
+  // primarily a log-readability feature, not a precision timekeeping one.
+  if (!logTimeIsSynced()) {
+    syncTimeOverNtp();
+  }
   resolveLocationIfNeeded();
 
   // Location resolution can fail (bad API key, no results for the query,
@@ -324,6 +354,16 @@ void uiTaskFn(void *) {
 
 void setup() {
   Serial.begin(115200);
+
+  // Checked immediately, independent of WiFi/provisioning below — if an
+  // earlier session's NTP sync survived this reset (see
+  // rtcTimeLooksValid()'s comment), every log line from here on can use a
+  // real timestamp, and netTaskFn won't need to spend a network
+  // round-trip re-confirming it later.
+  if (rtcTimeLooksValid()) {
+    logSetTimeSynced(true);
+    LOG_I("main", "RTC time from a prior session looks valid, skipping NTP sync this boot\n");
+  }
 
   auto cfg = M5.config();
   M5.begin(cfg);
