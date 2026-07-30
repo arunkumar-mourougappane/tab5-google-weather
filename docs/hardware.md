@@ -244,17 +244,6 @@ dead ends in a row (this one, the loop-stack-size build flag earlier in
 this doc, and `JsonDocument::memoryUsage()` in firmware-architecture.md)
 while chasing one confirmed-open upstream bug is where this stopped.
 
-**Where this lands:** accepted as a known, currently-unfixable-from-here
-upstream limitation, not chased further at the application level. The
-failure is already survivable rather than catastrophic: NVS-persisted
-config (`ConfigStore`) means the panic handler's automatic reboot just
-replays the boot sequence and retries, not a bricked device. Revisit if a
-future pioarduino platform bump brings in an esp-hosted version with the
-PSRAM buffer-pool option exposed through the public config API — worth
-checking against this issue specifically when evaluating any such bump,
-not just the WiFi-scan/backlight-flicker regressions already tracked
-above.
-
 **Confirmed WiFi itself is not a factor, with explicit logging.** WiFi
 association was suspected as a possible separate cause at one point
 (a boot where the app never got past connecting). Added `logWifiState()`
@@ -268,6 +257,58 @@ first attempt, with 59KB still contiguous and DMA-capable. WiFi is solid
 throughout; the failure is squarely at the AES/TLS crypto-DMA layer, not
 the WiFi link. That rules out the last remaining alternative explanation
 and leaves the upstream esp-hosted bug above as the sole cause.
+
+**Actual fix found: downgrade the pinned arduino-esp32 version, not a
+code change.** Searched the upstream issue thread further for a fix
+rather than just accepting the limitation. A user on that thread
+(`jantielens`) had run a controlled comparison — same app, same
+hardware, only the arduino-esp32 core version changed — between 3.3.7
+and 3.3.11, and found a stark difference in usable DMA-capable memory:
+
+| Metric | arduino-esp32 3.3.7 | arduino-esp32 3.3.11 |
+|---|---:|---:|
+| Largest DMA-internal block | 167,924 bytes | 18,420 bytes |
+| Free DMA-internal | 210,544 bytes | 19,532 bytes |
+
+This project was pinned to arduino-esp32 **3.3.9** (`platformio.ini`'s
+`#55.03.39` tag) — between those two tested points, and never directly
+tested upstream. Mapped pioarduino's platform tags to confirm exactly
+which arduino-esp32/ESP-IDF version each bundles:
+
+| platform tag | arduino-esp32 | ESP-IDF |
+|---|---|---|
+| `#55.03.35` (original, pre-scan-fix) | 3.3.5 | 5.5.1 |
+| `#55.03.37` | 3.3.7 | 5.5.2 |
+| `#55.03.39` (previously pinned here) | 3.3.9 | 5.5.4 |
+| `#55.03.311` (upstream's "bad" version) | 3.3.11 | 5.5.5 |
+
+The catch: `#55.03.37` bundles IDF 5.5.2 — the exact version this
+project originally moved *off* of, because it's documented elsewhere
+(above) as introducing a MIPI-DSI backlight flicker regression on this
+display. Tested anyway, since the flicker was never confirmed on this
+specific unit even past IDF 5.5.2 (only inferred as a risk), while the
+DMA/crash regression was extensively confirmed on this unit already.
+
+**Confirmed on hardware after switching to `#55.03.37`:** the build
+itself reports a different memory budget before any application code
+runs — `DIRAM` total 576,464 bytes vs. 445,392 on `#55.03.39`, a
+structural difference from the IDF version itself, not this project's
+code. Across 4 consecutive full boot/reset cycles, every single one
+completed all three weather fetches (current/hourly/daily, including
+the daily forecast's two-page split) with **zero `esp-aes` failures and
+zero SDIO asserts** — `largest_dma` stayed in the 190–240KB range
+throughout instead of collapsing to single-digit KB. No backlight
+flicker observed by eye across the same 4 boots. `platformio.ini` is
+now pinned to `#55.03.37`.
+
+**Not yet re-verified:** `WiFi.scanNetworks()` in provisioning (the
+original reason this project moved off IDF 5.5.1) hasn't been
+re-tested on 5.5.2 specifically. Not a hard blocker if it's still
+broken — manual SSID entry is already the primary path in
+provisioning, scanning is a convenience — but worth checking before
+calling this fully closed. See `platformio.ini`'s comment for the
+fallback chain if either regression (scan or flicker) turns out to
+still be present.
 
 Two other things worth knowing before debugging WiFi issues on this hardware:
 
