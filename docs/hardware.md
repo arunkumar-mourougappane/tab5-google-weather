@@ -255,6 +255,20 @@ checking against this issue specifically when evaluating any such bump,
 not just the WiFi-scan/backlight-flicker regressions already tracked
 above.
 
+**Confirmed WiFi itself is not a factor, with explicit logging.** WiFi
+association was suspected as a possible separate cause at one point
+(a boot where the app never got past connecting). Added `logWifiState()`
+(`WiFi.status()`/RSSI, called from `settleWifiLink()` before every fetch,
+plus once right after the initial join) instead of inferring WiFi health
+from `ssl_starttls_handshake()`'s position in the error trace. Confirmed
+on hardware: `status=3 (connected)`, RSSI -38 to -41 dBm (strong signal),
+logged before every single request across an entire boot where *every*
+weather fetch failed at the TLS handshake stage — including the very
+first attempt, with 59KB still contiguous and DMA-capable. WiFi is solid
+throughout; the failure is squarely at the AES/TLS crypto-DMA layer, not
+the WiFi link. That rules out the last remaining alternative explanation
+and leaves the upstream esp-hosted bug above as the sole cause.
+
 Two other things worth knowing before debugging WiFi issues on this hardware:
 
 - The C6 runs its own **`esp_hosted` firmware image**, flashed to a dedicated
