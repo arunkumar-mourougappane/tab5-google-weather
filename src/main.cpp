@@ -253,6 +253,20 @@ void netTaskFn(void *) {
   logHeapStats("netTaskFn start");
   connectWifiOrRetryBoot();
   resolveLocationIfNeeded();
+
+  // Location resolution can fail (bad API key, no results for the query,
+  // transient network issue exhausting its retries — see
+  // resolveLocationIfNeeded()) and previously wasn't checked here: the
+  // weather fetch ran anyway, silently using ConfigStore's (0, 0)
+  // defaults instead of a resolved location, showing a real but
+  // meaningless forecast for the middle of the ocean with no obvious
+  // indication anything was wrong. resolveLocationIfNeeded() already
+  // published a "Could not resolve" status that stays on screen since
+  // nothing overwrites it below — nothing useful left to do this boot.
+  if (!configStore.hasLocation()) {
+    vTaskDelete(nullptr);
+  }
+
   fetchAndShowCurrentConditions();
   fetchAndLogForecasts();
 

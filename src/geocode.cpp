@@ -11,9 +11,17 @@ namespace {
 
 // See weather.cpp for why this is stack-, not heap-, backed, and
 // docs/firmware-architecture.md's "Memory" section for the reasoning.
-// Geocoding's response is much smaller than the weather endpoints', but
-// this is cheap and keeps the whole project consistent about not putting
-// JSON parsing on the heap.
+//
+// The "Geocoding's response is much smaller than the weather endpoints'"
+// assumption this size was originally picked against turned out to be
+// wrong: confirmed on real hardware that a real ZIP-code query response
+// (5 address_components, bounds+viewport+location geometry,
+// postcode_localities, place_id, formatted_address — none of which this
+// file reads) overflowed 2048 bytes and made geocodeLocation() fail with
+// a parse error on every single retry, deterministically, since the
+// response for a given query is the same every time. Same fix as
+// weather.cpp: a parse filter (below) keeps the parsed document sized
+// against what's actually read, not the full response.
 constexpr size_t kJsonArenaBytes = 2048;
 
 String urlEncode(const String &s) {
@@ -82,6 +90,16 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
   const String url = "https://maps.googleapis.com/maps/api/geocode/json?address=" + urlEncode(query) +
                       "&key=" + apiKey;
 
+  // Keeps the parsed document sized against what this function actually
+  // reads (status/error_message/the first result's lat+lng) rather than
+  // the full response — see kJsonArenaBytes's comment above for why this
+  // matters here specifically.
+  JsonDocument filter;
+  filter["status"] = true;
+  filter["error_message"] = true;
+  filter["results"][0]["geometry"]["location"]["lat"] = true;
+  filter["results"][0]["geometry"]["location"]["lng"] = true;
+
   // One-shot call, no connection reuse needed (unlike weather.cpp, which
   // makes three back-to-back calls to the same host) — a fresh
   // HTTPClient/WiFiClientSecure per call is fine here. See
@@ -90,7 +108,7 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
   JsonDocument &doc = stackDoc.doc();
   int httpCode = 0;
   String body;
-  if (!httpGetJson(http, client, url, doc, httpCode, body)) {
+  if (!httpGetJson(http, client, url, doc, httpCode, body, &filter)) {
     if (httpCode == 0) {
       outError = "Could not start the request.";
       outRetryable = true;
@@ -100,6 +118,16 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
 
     Serial.printf("[geocode] HTTP status: %d\n", httpCode);
     Serial.printf("[geocode] body: %s\n", body.c_str());
+    // JsonDocument::memoryUsage() would be the obvious way to check this,
+    // but it's deprecated in this ArduinoJson version and unconditionally
+    // returns 0 — see json_arena_allocator.h. Logged here too (not just
+    // the success path below) since a parse failure with httpCode == 200
+    // and a body that looks complete/valid is exactly what an arena
+    // overflow looks like — this line is what would have made that
+    // diagnosable immediately instead of needing a hardware log to spot.
+    Serial.printf("[geocode] JSON arena: %u bytes used of %u, overflowed=%d\n",
+                  static_cast<unsigned>(stackDoc.bytesUsed()), static_cast<unsigned>(kJsonArenaBytes),
+                  stackDoc.overflowed());
 
     if (httpCode != HTTP_CODE_OK) {
       outError = "Network error talking to Google (HTTP ";
@@ -116,9 +144,6 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
   }
 
   Serial.printf("[geocode] HTTP status: %d\n", httpCode);
-  // JsonDocument::memoryUsage() would be the obvious way to get this, but
-  // it's deprecated in this ArduinoJson version and unconditionally
-  // returns 0 — see json_arena_allocator.h.
   Serial.printf("[geocode] JSON arena: %u bytes used of %u, overflowed=%d\n",
                 static_cast<unsigned>(stackDoc.bytesUsed()), static_cast<unsigned>(kJsonArenaBytes),
                 stackDoc.overflowed());
