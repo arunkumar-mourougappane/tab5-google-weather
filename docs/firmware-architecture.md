@@ -120,32 +120,36 @@ Checked against the vendored ArduinoJson v7 source
   header plus "grow in place if it's the last allocation, else copy and
   re-bump" logic to implement that correctly. Standard arena-allocator
   technique, not exotic, but real implementation work — not a drop-in.
-- **Sizing:** `JsonDocument::memoryUsage()` is public
-  (`JsonDocument.hpp:389`) — before picking any fixed arena size, log this
-  after each real parse on hardware rather than guessing. Rough estimate
-  from field counts: current-conditions is ~1 pool (≤1KB) + a handful of
-  short strings; a 4-day daily-forecast page (nested day/night objects) is
-  probably ~2 pools (~2KB) plus string pool — **a 4–6KB arena per document**
-  is a reasonable starting target, to be confirmed with real
-  `memoryUsage()` numbers rather than assumed.
+- **Sizing:** `JsonDocument::memoryUsage()` looked like the obvious way to
+  measure this — it isn't. It's deprecated in the pinned ArduinoJson
+  version (7.4.3) and unconditionally returns 0 (`JsonDocument.hpp:389`).
+  `json_arena_allocator.h`'s `JsonArenaAllocator` tracks its own
+  `bytesUsed()` instead, which is what's actually logged after every parse
+  now.
 - **Where would that arena live?** A local (function-scope) array is stack
   memory in whichever task calls it. Confirmed in the Arduino-ESP32 core
   (`cores/esp32/main.cpp:15-21`): `setup()`/`loop()` run in a task called
-  `loopTask`, created with an **8192-byte stack by default**
-  (`ARDUINO_LOOP_STACK_SIZE`, overridable via the
-  `CONFIG_ARDUINO_LOOP_STACK_SIZE` build flag). That 8KB is already shared
-  with LVGL, M5Unified, WiFi, and HTTPClient's own call frames — dropping a
-  several-KB fixed buffer on top of it risks a silent stack overflow (which
-  on ESP32 tends to corrupt memory before crashing somewhere unrelated,
-  strictly worse to debug than the current failure mode). Two ways to get
-  real headroom instead of fighting the existing 8KB: bump
-  `CONFIG_ARDUINO_LOOP_STACK_SIZE` (e.g. to 16–24KB), or give the network
-  task (below) its own dedicated stack sized for this from the start.
+  `loopTask`, created with an **8192-byte stack by default**. The
+  seemingly obvious way to grow it — a `-DCONFIG_ARDUINO_LOOP_STACK_SIZE`
+  build flag — turned out not to work on this precompiled-libs target: the
+  prebuilt `framework-arduinoespressif32-libs` package for this board ships
+  an unconditional `#define CONFIG_ARDUINO_LOOP_STACK_SIZE 8192` in its own
+  `sdkconfig.h` (no `#ifndef` guard), which silently wins over the
+  command-line `-D` regardless of include order (confirmed by the
+  compiler's own "redefined" warning when this was tried). The core
+  exposes a weak `getArduinoLoopTaskStackSize()` function for exactly this
+  instead (`cores/esp32/main.cpp:39-41`) — overriding that in `main.cpp` is
+  what actually takes effect.
 
-**Net assessment:** feasible, real payoff (removes our own heap churn from
-competing with the AES DMA path entirely, not just reduces it), but it's an
-arena-allocator implementation task plus a stack-size decision — not a
-quick change. Worth doing once the module split above exists, so the
+**Implemented:** `JsonArenaAllocator`/`StackJsonDocument`
+(`include/json_arena_allocator.h`) and a `getArduinoLoopTaskStackSize()`
+override (16KB) in `main.cpp`, used by all four JSON parses across
+`weather.cpp`/`geocode.cpp`. Each logs its arena's `bytesUsed()` and
+`overflowed()` after every real parse, so the current 6KB
+(weather)/2KB (geocode) sizes are backed by hardware numbers, not the
+original guess — worth checking the first few boots' Serial output after
+flashing to confirm neither ever reports `overflowed=1`. Done after the
+module split above, matching the original sequencing note: the
 allocator can live with the networking code it serves instead of bolted
 onto `weather.cpp` in isolation.
 

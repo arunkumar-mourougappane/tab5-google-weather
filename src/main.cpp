@@ -224,6 +224,25 @@ void fetchAndLogForecasts() {
 
 }  // namespace
 
+// Overrides the Arduino core's weak default (cores/esp32/main.cpp) to give
+// setup()/loop()'s FreeRTOS task ("loopTask") more than the stock 8192-byte
+// stack. Note this is the *only* override that actually takes effect on
+// this precompiled-libs target: the seemingly obvious alternative — a
+// -DCONFIG_ARDUINO_LOOP_STACK_SIZE build flag — gets silently clobbered,
+// because the prebuilt framework-arduinoespressif32-libs package for this
+// board ships an unconditional `#define CONFIG_ARDUINO_LOOP_STACK_SIZE
+// 8192` in its own sdkconfig.h (no #ifndef guard), which wins over a
+// command-line -D regardless of definition order (confirmed by the
+// compiler's own "CONFIG_ARDUINO_LOOP_STACK_SIZE redefined" warning when
+// that was tried first).
+//
+// The extra headroom is for the stack-backed JsonDocument arenas in
+// weather.cpp/geocode.cpp (see json_arena_allocator.h and
+// docs/firmware-architecture.md's "Memory" section) — those are local
+// buffers on this same task's stack, on top of whatever LVGL, M5Unified,
+// WiFi, and HTTPClient's own call frames already use.
+size_t getArduinoLoopTaskStackSize() { return 16384; }
+
 void setup() {
   Serial.begin(115200);
 

@@ -5,8 +5,16 @@
 #include <WiFiClientSecure.h>
 
 #include "http_json_client.h"
+#include "json_arena_allocator.h"
 
 namespace {
+
+// See weather.cpp for why this is stack-, not heap-, backed, and
+// docs/firmware-architecture.md's "Memory" section for the reasoning.
+// Geocoding's response is much smaller than the weather endpoints', but
+// this is cheap and keeps the whole project consistent about not putting
+// JSON parsing on the heap.
+constexpr size_t kJsonArenaBytes = 2048;
 
 String urlEncode(const String &s) {
   String out;
@@ -78,7 +86,8 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
   // makes three back-to-back calls to the same host) — a fresh
   // HTTPClient/WiFiClientSecure per call is fine here. See
   // http_json_client.h for why the transport itself is shared.
-  JsonDocument doc;
+  StackJsonDocument<kJsonArenaBytes> stackDoc;
+  JsonDocument &doc = stackDoc.doc();
   int httpCode = 0;
   String body;
   if (!httpGetJson(http, client, url, doc, httpCode, body)) {
@@ -107,6 +116,12 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
   }
 
   Serial.printf("[geocode] HTTP status: %d\n", httpCode);
+  // JsonDocument::memoryUsage() would be the obvious way to get this, but
+  // it's deprecated in this ArduinoJson version and unconditionally
+  // returns 0 — see json_arena_allocator.h.
+  Serial.printf("[geocode] JSON arena: %u bytes used of %u, overflowed=%d\n",
+                static_cast<unsigned>(stackDoc.bytesUsed()), static_cast<unsigned>(kJsonArenaBytes),
+                stackDoc.overflowed());
 
   const char *status = doc["status"] | "";
   Serial.printf("[geocode] status field: \"%s\"\n", status);

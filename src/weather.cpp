@@ -5,10 +5,25 @@
 #include <WiFiClientSecure.h>
 
 #include "http_json_client.h"
+#include "json_arena_allocator.h"
 
 namespace {
 
 constexpr const char *kHost = "https://weather.googleapis.com";
+
+// Sized against real bytesUsed() numbers logged on hardware (see the
+// Serial output each fetch* call below) rather than assumed — see
+// docs/firmware-architecture.md's "Memory" section for the reasoning
+// behind using a stack arena here at all instead of the default
+// heap-backed JsonDocument. (JsonDocument::memoryUsage() would be the
+// obvious way to get this, but it's deprecated in this ArduinoJson version
+// and unconditionally returns 0 — see json_arena_allocator.h.)
+constexpr size_t kJsonArenaBytes = 6144;
+
+void logArenaUsage(const char *label, size_t bytesUsed, bool arenaOverflowed) {
+  Serial.printf("[weather] %s JSON arena: %u bytes used of %u, overflowed=%d\n", label,
+                static_cast<unsigned>(bytesUsed), static_cast<unsigned>(kJsonArenaBytes), arenaOverflowed);
+}
 
 // Weather API errors follow Google Cloud's standard error envelope —
 // {"error": {"code": <http status>, "message": "...", "status":
@@ -161,10 +176,12 @@ bool fetchCurrentConditions(const String &apiKey, float lat, float lon, bool uni
   String url = String(kHost) + "/v1/currentConditions:lookup?key=" + apiKey + "&location.latitude=" +
                String(lat, 6) + "&location.longitude=" + String(lon, 6) + "&unitsSystem=" + unitsParam(unitsImperial);
 
-  JsonDocument doc;
+  StackJsonDocument<kJsonArenaBytes> stackDoc;
+  JsonDocument &doc = stackDoc.doc();
   if (!getJson(url, doc, outError, outRetryable)) {
     return false;
   }
+  logArenaUsage("current", stackDoc.bytesUsed(), stackDoc.overflowed());
 
   out.currentTime = doc["currentTime"] | "";
   out.isDaytime = doc["isDaytime"] | false;
@@ -195,10 +212,12 @@ bool fetchHourlyForecast(const String &apiKey, float lat, float lon, bool unitsI
                "&unitsSystem=" + unitsParam(unitsImperial) + "&hours=" + String(kMaxHourlyPoints) +
                "&pageSize=" + String(kMaxHourlyPoints);
 
-  JsonDocument doc;
+  StackJsonDocument<kJsonArenaBytes> stackDoc;
+  JsonDocument &doc = stackDoc.doc();
   if (!getJson(url, doc, outError, outRetryable)) {
     return false;
   }
+  logArenaUsage("hourly", stackDoc.bytesUsed(), stackDoc.overflowed());
 
   JsonArrayConst hours = doc["forecastHours"].as<JsonArrayConst>();
   for (JsonVariantConst hour : hours) {
@@ -246,13 +265,18 @@ bool fetchDailyForecast(const String &apiKey, float lat, float lon, bool unitsIm
   // free heap isn't the same as an unfragmented block being available, and
   // leaving page 1's parsed JSON resident through page 2's TLS handshake
   // was unnecessary peak memory pressure at exactly the moment that
-  // allocation needs to succeed.
+  // allocation needs to succeed. Now that both documents are stack-arena
+  // backed (see json_arena_allocator.h) rather than heap-backed, this
+  // scoping also means page 1's buffer is off the stack before page 2's
+  // even exists, not just "freed" in a heap sense.
   String pageToken;
   {
-    JsonDocument doc;
+    StackJsonDocument<kJsonArenaBytes> stackDoc;
+    JsonDocument &doc = stackDoc.doc();
     if (!getJson(baseUrl + "&pageSize=" + String(kFirstPageDays), doc, outError, outRetryable)) {
       return false;
     }
+    logArenaUsage("daily page 1", stackDoc.bytesUsed(), stackDoc.overflowed());
     appendDailyPoints(doc["forecastDays"].as<JsonArrayConst>(), out, outCount);
     pageToken = doc["nextPageToken"] | "";
   }
@@ -260,11 +284,13 @@ bool fetchDailyForecast(const String &apiKey, float lat, float lon, bool unitsIm
   if (pageToken.length() > 0 && outCount < kMaxDailyPoints) {
     delay(500);  // beat between the two calls, same idea as settleWifiLink() in main.cpp
 
-    JsonDocument doc2;
+    StackJsonDocument<kJsonArenaBytes> stackDoc2;
+    JsonDocument &doc2 = stackDoc2.doc();
     String secondError;
     bool secondRetryable = true;
     const String url2 = baseUrl + "&pageSize=" + String(kMaxDailyPoints - outCount) + "&pageToken=" + pageToken;
     if (getJson(url2, doc2, secondError, secondRetryable)) {
+      logArenaUsage("daily page 2", stackDoc2.bytesUsed(), stackDoc2.overflowed());
       appendDailyPoints(doc2["forecastDays"].as<JsonArrayConst>(), out, outCount);
     } else {
       // A partial (4-day) forecast beats none — don't fail the whole call
