@@ -55,6 +55,15 @@ void describeError(int httpCode, const String &canonicalStatus, const String &ap
   } else if (httpCode >= 500 || canonicalStatus == "UNAVAILABLE" || canonicalStatus == "INTERNAL") {
     outError = "Google's weather server had a temporary problem.";
     outRetryable = true;
+  } else if (httpCode < 0) {
+    // Negative codes are HTTPClient's own transport-level errors (refused
+    // connection, TLS handshake failure, timeout, ...), not a real
+    // response from the API — always worth retrying, especially now that
+    // a failed handshake forces the shared connection closed before the
+    // next attempt (see getJson() above) rather than reusing whatever
+    // state it left behind.
+    outError = "Network error talking to the Weather API.";
+    outRetryable = true;
   } else {
     outError = "Unexpected response from the Weather API";
     if (canonicalStatus.length() > 0) {
@@ -109,6 +118,20 @@ bool getJson(const String &url, JsonDocument &doc, String &outError, bool &outRe
   if (httpGetJson(http, client, url, doc, httpCode, body)) {
     Serial.printf("[weather] HTTP status: %d\n", httpCode);
     return true;
+  }
+
+  // httpCode <= 0 means the connection/TLS handshake itself failed (as
+  // opposed to a completed request with a non-200 status) — observed on
+  // real hardware paired with `esp-aes: Failed to allocate memory ...`
+  // mid-handshake. A handshake that failed partway through can leave the
+  // reused WiFiClientSecure's underlying socket/TLS session in a
+  // half-torn-down state; the *next* call reusing that same object is
+  // where the esp-hosted SDIO driver's hard assert has been seen to hit
+  // (see docs/hardware.md). Force-closing here means the next attempt
+  // opens a genuinely fresh connection instead of reusing whatever state
+  // the failed handshake left behind.
+  if (httpCode <= 0) {
+    client.stop();
   }
 
   if (httpCode == 0) {
