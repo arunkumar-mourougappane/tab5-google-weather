@@ -4,6 +4,8 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+#include "http_json_client.h"
+
 namespace {
 
 String urlEncode(const String &s) {
@@ -72,34 +74,39 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
   const String url = "https://maps.googleapis.com/maps/api/geocode/json?address=" + urlEncode(query) +
                       "&key=" + apiKey;
 
-  if (!http.begin(client, url)) {
-    outError = "Could not start the request.";
-    outRetryable = true;
-    Serial.println("[geocode] http.begin() failed");
-    return false;
-  }
-
-  const int code = http.GET();
-  Serial.printf("[geocode] HTTP status: %d\n", code);
-  if (code != HTTP_CODE_OK) {
-    Serial.printf("[geocode] body: %s\n", http.getString().c_str());
-    http.end();
-    outError = "Network error talking to Google (HTTP ";
-    outError += code;
-    outError += ").";
-    outRetryable = true;
-    return false;
-  }
-
+  // One-shot call, no connection reuse needed (unlike weather.cpp, which
+  // makes three back-to-back calls to the same host) — a fresh
+  // HTTPClient/WiFiClientSecure per call is fine here. See
+  // http_json_client.h for why the transport itself is shared.
   JsonDocument doc;
-  const DeserializationError err = deserializeJson(doc, http.getStream());
-  http.end();
-  if (err) {
-    Serial.printf("[geocode] JSON parse failed: %s\n", err.c_str());
+  int httpCode = 0;
+  String body;
+  if (!httpGetJson(http, client, url, doc, httpCode, body)) {
+    if (httpCode == 0) {
+      outError = "Could not start the request.";
+      outRetryable = true;
+      Serial.println("[geocode] http.begin() failed");
+      return false;
+    }
+
+    Serial.printf("[geocode] HTTP status: %d\n", httpCode);
+    Serial.printf("[geocode] body: %s\n", body.c_str());
+
+    if (httpCode != HTTP_CODE_OK) {
+      outError = "Network error talking to Google (HTTP ";
+      outError += httpCode;
+      outError += ").";
+      outRetryable = true;
+      return false;
+    }
+
+    // httpCode == HTTP_CODE_OK but the body didn't parse as JSON.
     outError = "Bad response from Google.";
     outRetryable = true;
     return false;
   }
+
+  Serial.printf("[geocode] HTTP status: %d\n", httpCode);
 
   const char *status = doc["status"] | "";
   Serial.printf("[geocode] status field: \"%s\"\n", status);

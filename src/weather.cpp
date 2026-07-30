@@ -4,6 +4,8 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+#include "http_json_client.h"
+
 namespace {
 
 constexpr const char *kHost = "https://weather.googleapis.com";
@@ -76,27 +78,35 @@ WiFiClientSecure &sharedClient() {
 
 // Shared GET + JSON-parse for all three endpoints below. Returns true and
 // leaves `doc` populated with the parsed body on success (HTTP 200); on
-// any other outcome fills outError/outRetryable and returns false.
+// any other outcome fills outError/outRetryable and returns false. Wraps
+// httpGetJson() (http_json_client.h) — the transport/dechunking mechanics
+// are shared with geocode.cpp; this API's error-envelope interpretation
+// (describeError() above) isn't, since it's specific to Google Cloud's
+// error shape.
 bool getJson(const String &url, JsonDocument &doc, String &outError, bool &outRetryable) {
   WiFiClientSecure &client = sharedClient();
 
   static HTTPClient http;
   http.setReuse(true);
-  if (!http.begin(client, url)) {
+
+  int httpCode = 0;
+  String body;
+  if (httpGetJson(http, client, url, doc, httpCode, body)) {
+    Serial.printf("[weather] HTTP status: %d\n", httpCode);
+    return true;
+  }
+
+  if (httpCode == 0) {
     outError = "Could not start the request.";
     outRetryable = true;
     Serial.println("[weather] http.begin() failed");
     return false;
   }
 
-  const int code = http.GET();
-  Serial.printf("[weather] HTTP status: %d\n", code);
+  Serial.printf("[weather] HTTP status: %d\n", httpCode);
+  Serial.printf("[weather] body: %s\n", body.c_str());
 
-  if (code != HTTP_CODE_OK) {
-    const String body = http.getString();
-    Serial.printf("[weather] body: %s\n", body.c_str());
-    http.end();
-
+  if (httpCode != HTTP_CODE_OK) {
     JsonDocument errDoc;
     const DeserializationError parseErr = deserializeJson(errDoc, body);
     String canonicalStatus;
@@ -105,27 +115,14 @@ bool getJson(const String &url, JsonDocument &doc, String &outError, bool &outRe
       canonicalStatus = errDoc["error"]["status"] | "";
       apiMessage = errDoc["error"]["message"] | "";
     }
-    describeError(code, canonicalStatus, apiMessage, outError, outRetryable);
+    describeError(httpCode, canonicalStatus, apiMessage, outError, outRetryable);
     return false;
   }
 
-  // Not http.getStream(): Weather API responses come back with chunked
-  // transfer-encoding (no fixed Content-Length), and getStream() hands
-  // back the raw transport stream, chunk-size markers and all — that's
-  // what "InvalidInput" from deserializeJson() turned out to be, confirmed
-  // on real hardware. getString() does the dechunking first.
-  const String body = http.getString();
-  http.end();
-  const DeserializationError err = deserializeJson(doc, body);
-  if (err) {
-    Serial.printf("[weather] JSON parse failed: %s\n", err.c_str());
-    Serial.printf("[weather] body: %s\n", body.c_str());
-    outError = "Bad response from Google.";
-    outRetryable = true;
-    return false;
-  }
-
-  return true;
+  // httpCode == HTTP_CODE_OK but the body didn't parse as JSON.
+  outError = "Bad response from Google.";
+  outRetryable = true;
+  return false;
 }
 
 String unitsParam(bool unitsImperial) { return unitsImperial ? "IMPERIAL" : "METRIC"; }
