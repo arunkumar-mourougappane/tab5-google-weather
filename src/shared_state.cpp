@@ -1,0 +1,26 @@
+#include "shared_state.h"
+
+void SharedState::begin() {
+  mutex_ = xSemaphoreCreateMutex();
+}
+
+void SharedState::publishStatus(const String &title, const String &subtitle, bool loading) {
+  xSemaphoreTake(mutex_, portMAX_DELAY);
+  status_.title = title;
+  status_.subtitle = subtitle;
+  status_.loading = loading;
+  dirty_ = true;
+  xSemaphoreGive(mutex_);
+}
+
+bool SharedState::tryConsumeStatus(Status &out) {
+  bool hadUpdate = false;
+  xSemaphoreTake(mutex_, portMAX_DELAY);
+  if (dirty_) {
+    out = status_;
+    dirty_ = false;
+    hadUpdate = true;
+  }
+  xSemaphoreGive(mutex_);
+  return hadUpdate;
+}

@@ -14,88 +14,105 @@ skinparam sequence {
   BoxBackgroundColor #FBFAF7
 }
 
-title Proposed boot + refresh flow — uiTask (core 0) parallel to netTask (core 1)
+title Boot flow — setup() runs provisioning synchronously, then splits into uiTaskFn (core 0) / netTaskFn (core 1)
 
-participant "main.cpp" as Main
-
-box "Core 0" #FBFAF7
-  participant "uiTask" as Ui
-  participant "DisplayManager\n+ BootUi/Dashboard" as Disp
-end box
-
+participant "main.cpp\nsetup()" as Main
+participant "DisplayManager" as Disp
+participant "ProvisioningServer" as Prov
+participant "ConfigStore" as Cfg
 participant "SharedState\n(mutex-protected)" as Shared
 
+box "Core 0" #FBFAF7
+  participant "uiTaskFn" as Ui
+  participant "BootUi" as BootUi
+end box
+
 box "Core 1" #FBFAF7
-  participant "netTask" as Net
-  participant "ConfigStore" as Cfg
-  participant "ProvisioningServer" as Prov
+  participant "netTaskFn" as Net
   participant "GeocodeClient" as Geo
   participant "WeatherClient" as Wx
 end box
 
-Main -> Ui ** : xTaskCreatePinnedToCore(core 0)
-Main -> Net ** : xTaskCreatePinnedToCore(core 1)
-
-activate Ui
-Ui -> Disp : initDisplay()
-Ui -> Disp : showStatusScreen("Starting...")
-
-activate Net
-Net -> Cfg : begin()
+Main -> Disp : initDisplay()
+Main -> Shared : begin()
+Main -> Cfg : begin()
 
 alt not yet provisioned
-  Net -> Prov : runProvisioning(config)
+  Main -> Prov : runProvisioning(config)
   note right of Prov
-    Blocks this task only —
-    AP + DNS + HTTP setup page.
-    uiTask keeps rendering.
+    Synchronous, single-task.
+    Owns LVGL directly (its own
+    screens + pump loop) — can't
+    run alongside uiTaskFn, which
+    doesn't exist yet at this point.
   end note
-  Prov --> Net : setup complete
-  Net -> Net : ESP.restart()
-else already provisioned
-  Net -> Net : connectWifiOrRetryBoot()
-  loop until connected or timeout
-    Net -> Shared : publish("Connecting to Wi-Fi")
-  end
-
-  alt no saved lat/lon yet
-    Net -> Geo : geocodeLocation(query, apiKey)
-    Geo --> Net : lat, lon
-    Net -> Cfg : saveLocation(lat, lon)
-  end
-
-  loop every refresh interval (e.g. 10 min)
-    Net -> Wx : fetchCurrentConditions()
-    Wx --> Net : CurrentConditions
-    Net -> Wx : fetchHourlyForecast()
-    Wx --> Net : HourlyForecastPoint[8]
-    Net -> Wx : fetchDailyForecast()
-    note right of Wx
-      Split into 2 pages
-      (4 days, then 3) —
-      see hardware.md
-    end note
-    Wx --> Net : DailyForecastPoint[7]
-
-    Net -> Shared : publish(current, hourly, daily)
-    activate Shared
-    Shared -> Shared : lock mutex, copy in, unlock
-    deactivate Shared
-  end
+  Prov --> Main : setup complete
+  Main -> Main : ESP.restart()
 end
 
-par uiTask render loop (continuous, never blocked by netTask)
-  loop every LVGL tick
-    Ui -> Ui : pumpLvgl()
-    Ui -> Shared : tryConsume(out)
+Main -> BootUi : showStatusScreen("Starting...")
+Main -> Ui ** : xTaskCreatePinnedToCore(core 0, 8KB stack)
+Main -> Net ** : xTaskCreatePinnedToCore(core 1, 16KB stack)
+Main -> Main : vTaskDelete(nullptr)
+
+activate Ui
+activate Net
+
+Net -> Net : connectWifiOrRetryBoot()
+Net -> Shared : publishStatus("Connecting to Wi-Fi", ..., loading=true)
+loop until connected or 20s timeout
+  Net -> Net : delay(50)
+end
+
+alt no saved lat/lon yet
+  Net -> Shared : publishStatus("Finding your location", ...)
+  Net -> Geo : geocodeLocation(query, apiKey)
+  Geo --> Net : lat, lon
+  Net -> Cfg : saveLocation(lat, lon)
+end
+
+Net -> Shared : publishStatus("Getting weather", ...)
+Net -> Wx : fetchCurrentConditions()
+Wx --> Net : CurrentConditions
+Net -> Shared : publishStatus(title=temp, subtitle=conditions)
+
+Net -> Wx : fetchHourlyForecast()
+Wx --> Net : HourlyForecastPoint[8]
+Net -> Wx : fetchDailyForecast()
+note right of Wx
+  Split into 2 pages
+  (4 days, then 3) —
+  see hardware.md
+end note
+Wx --> Net : DailyForecastPoint[7]
+note right of Net
+  Logged via Serial only —
+  no dashboard UI yet to
+  show hourly/daily.
+end note
+
+Net -> Net : vTaskDelete(nullptr)
+note right of Net
+  One-shot for now, matching
+  today's behavior — a refresh
+  loop is dashboard work, not
+  this phase's.
+end note
+deactivate Net
+
+par uiTaskFn render loop (continuous, never blocked by netTaskFn)
+  loop every tick
+    Ui -> Ui : M5.update(); pumpLvgl()
+    Ui -> Shared : tryConsumeStatus(out)
     activate Shared
     Shared -> Shared : lock mutex, copy out, unlock
     deactivate Shared
-    Shared --> Ui : true if new data
-    opt new data available
-      Ui -> Disp : render dashboard/hourly/daily
+    Shared --> Ui : true if status changed
+    opt status changed
+      Ui -> BootUi : showStatusScreen(out.title, out.subtitle, out.loading)
     end
   end
 end
+deactivate Ui
 
 @enduml

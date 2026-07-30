@@ -15,9 +15,13 @@ skinparam package {
   BorderColor #A89E8C
 }
 
-title Proposed firmware architecture — module + task split (ESP32-P4, dual-core)
+title Firmware architecture — module + task split (ESP32-P4, dual-core)
 
-package "Core 0 — uiTask" as UICore {
+package "setup() — synchronous, before the split" as Setup {
+  [provisioning.{h,cpp}\n(AP + setup web server —\nowns LVGL directly, can't\nrun concurrently with uiTask)] as Provisioning
+}
+
+package "Core 0 — uiTaskFn" as UICore {
   [display.{h,cpp}\n(LVGL/M5GFX init, flush + touch cbs, pumpLvgl)] as Display
   [boot_ui.{h,cpp}\n(status screen, wifi-error text)] as BootUi
   [dashboard UI\n(not built yet)] as Dashboard
@@ -26,35 +30,37 @@ package "Core 0 — uiTask" as UICore {
 }
 
 package "Shared state" as Shared {
-  [SharedState\n(mutex or FreeRTOS queue)] as SharedState
+  [SharedState\n(mutex-protected Status)] as SharedState
 }
 
-package "Core 1 — netTask" as NetCore {
-  [provisioning.{h,cpp}\n(AP + setup web server)] as Provisioning
+package "Core 1 — netTaskFn" as NetCore {
   [config_store.{h,cpp}\n(NVS-backed settings)] as ConfigStore
-  [http_json_client.{h,cpp}\n(proposed: shared GET+dechunk+parse)] as HttpClient
+  [http_json_client.{h,cpp}\n(shared GET+dechunk+parse)] as HttpClient
+  [json_arena_allocator.h\n(stack-backed JsonDocument)] as JsonArena
   [geocode.{h,cpp}] as Geocode
   [weather.{h,cpp}\n(current/hourly/daily)] as Weather
 
-  Provisioning --> ConfigStore
   Geocode --> ConfigStore
   Weather --> ConfigStore
   Geocode --> HttpClient
   Weather --> HttpClient
+  Geocode --> JsonArena
+  Weather --> JsonArena
 }
 
-[main.cpp\n(bootstrap only: create uiTask + netTask)] as Main
+[main.cpp\n(setup(): init display, run\nprovisioning if needed, create\nthe two tasks, self-delete)] as Main
 
+Main --> Setup : runs first,\nif unprovisioned
 Main --> UICore : xTaskCreatePinnedToCore(core 0)
 Main --> NetCore : xTaskCreatePinnedToCore(core 1)
-NetCore --> SharedState : publish fetched\nconditions/forecast
-SharedState --> UICore : consumed each\nLVGL tick
+NetCore --> SharedState : publishStatus()
+SharedState --> UICore : tryConsumeStatus()\neach LVGL tick
 
 note bottom of NetCore
   Owns everything that blocks:
-  WiFi connect, provisioning,
-  geocoding, weather fetches.
-  Free to block — off the render path.
+  WiFi connect, geocoding,
+  weather fetches. Free to
+  block — off the render path.
 end note
 
 note bottom of UICore

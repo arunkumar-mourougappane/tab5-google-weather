@@ -2,9 +2,13 @@
 //
 // Boot flow: bring up display + touch (docs/rendering.md) -> if not yet
 // provisioned, run first-run setup (AP + web page, docs/mockups/
-// provisioning.html) and reboot -> join the saved Wi-Fi -> geocode the
-// saved location once if we haven't already (docs/google-weather-api.md)
-// -> fetch current conditions (src/weather.cpp) and show them.
+// provisioning.html) and reboot -> split into two FreeRTOS tasks pinned to
+// the P4's two cores (docs/firmware-architecture.md's "Concurrency"
+// section): uiTask (core 0) owns LVGL/touch and never blocks on network
+// I/O; netTask (core 1) joins the saved Wi-Fi, geocodes the saved location
+// once if needed (docs/google-weather-api.md), and fetches current
+// conditions (src/weather.cpp) — free to block, since it's off the render
+// path. The two hand off boot-status text via SharedState.
 // [Real dashboard layout/hourly+daily strips not built yet — this is just
 // current conditions on the same status-screen chrome, to prove the
 // weather client end-to-end.]
@@ -15,21 +19,32 @@
 
 #include <M5Unified.h>
 #include <WiFi.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 #include "boot_ui.h"
 #include "config_store.h"
 #include "display.h"
 #include "geocode.h"
 #include "provisioning.h"
+#include "shared_state.h"
 #include "weather.h"
 
 namespace {
 
 ConfigStore configStore;
+SharedState sharedState;
+
+// ---------------------------------------------------------------------
+// netTask (core 1): WiFi connect, one-time geocode, weather fetch. Every
+// wait here is a plain delay() — no pumpLvgl() calls, unlike the old
+// single-task boot sequence — because uiTask is independently pumping
+// LVGL on the other core the whole time; this task is free to block.
+// ---------------------------------------------------------------------
 
 void connectWifiOrRetryBoot() {
-  showStatusScreen("Connecting to Wi-Fi", ("Joining \"" + configStore.wifiSsid() + "\"...").c_str(),
-                    /*loading=*/true);
+  sharedState.publishStatus("Connecting to Wi-Fi", "Joining \"" + configStore.wifiSsid() + "\"...",
+                             /*loading=*/true);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(configStore.wifiSsid().c_str(), configStore.wifiPassword().c_str());
@@ -37,19 +52,14 @@ void connectWifiOrRetryBoot() {
   constexpr uint32_t kWifiTimeoutMs = 20000;
   const uint32_t start = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - start < kWifiTimeoutMs) {
-    pumpLvgl();
     delay(50);
   }
 
   const wl_status_t status = WiFi.status();
   if (status != WL_CONNECTED) {
-    Serial.printf("[main] WiFi.status() = %d\n", status);
-    showStatusScreen("Could not join Wi-Fi", describeWifiStatus(status), /*loading=*/false);
-    const uint32_t retryStart = millis();
-    while (millis() - retryStart < 4000) {
-      pumpLvgl();
-      delay(20);
-    }
+    Serial.printf("[net] WiFi.status() = %d\n", status);
+    sharedState.publishStatus("Could not join Wi-Fi", describeWifiStatus(status), /*loading=*/false);
+    delay(4000);
     ESP.restart();
   }
 }
@@ -59,7 +69,7 @@ void resolveLocationIfNeeded() {
     return;
   }
 
-  showStatusScreen("Finding your location", configStore.locationQuery().c_str(), /*loading=*/true);
+  sharedState.publishStatus("Finding your location", configStore.locationQuery(), /*loading=*/true);
 
   // geocodeLocation() is a single-shot HTTPS call with no retry of its own
   // (see geocode.cpp) — a request fired immediately after WiFi.status()
@@ -79,11 +89,7 @@ void resolveLocationIfNeeded() {
   bool resolved = false;
   for (int attempt = 0; attempt < 3 && !resolved && retryable; attempt++) {
     if (attempt > 0) {
-      const uint32_t retryStart = millis();
-      while (millis() - retryStart < 500) {
-        pumpLvgl();
-        delay(20);
-      }
+      delay(500);
     }
     resolved = geocodeLocation(configStore.locationQuery(), configStore.apiKey(), lat, lon, error, retryable);
   }
@@ -93,12 +99,8 @@ void resolveLocationIfNeeded() {
     return;
   }
 
-  showStatusScreen("Could not resolve that location", error.c_str(), /*loading=*/false);
-  const uint32_t start = millis();
-  while (millis() - start < 4000) {
-    pumpLvgl();
-    delay(20);
-  }
+  sharedState.publishStatus("Could not resolve that location", error, /*loading=*/false);
+  delay(4000);
 }
 
 // Gives the esp-hosted SDIO link (ESP32-P4 <-> C6 co-processor, see
@@ -117,7 +119,7 @@ void resolveLocationIfNeeded() {
 // give the link more recovery time between requests; if this specific
 // assert resurfaces even with this delay, that's evidence the real fix
 // needs to shrink the daily-forecast response (largest of the three) rather
-// than just wait longer.
+// than just wait longer. (It did — see fetchDailyForecast()'s page split.)
 constexpr uint32_t kWifiSettleMs = 2000;
 
 void settleWifiLink() {
@@ -126,14 +128,10 @@ void settleWifiLink() {
   // times) — logging the largest contiguous internal/DMA-capable block too,
   // since that's what a tiny scratch-buffer allocation actually needs and
   // fragmentation could starve it even with plenty of free heap overall.
-  Serial.printf("[main] free heap: %u (largest internal block: %u, largest DMA block: %u)\n",
-                ESP.getFreeHeap(), heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+  Serial.printf("[net] free heap: %u (largest internal block: %u, largest DMA block: %u)\n", ESP.getFreeHeap(),
+                heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
                 heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
-  const uint32_t start = millis();
-  while (millis() - start < kWifiSettleMs) {
-    pumpLvgl();
-    delay(20);
-  }
+  delay(kWifiSettleMs);
 }
 
 // No dashboard UI yet (see docs/rendering.md's "Open problem" section on
@@ -146,7 +144,7 @@ void settleWifiLink() {
 void fetchAndShowCurrentConditions() {
   settleWifiLink();
 
-  showStatusScreen("Getting weather", configStore.locationQuery().c_str(), /*loading=*/true);
+  sharedState.publishStatus("Getting weather", configStore.locationQuery(), /*loading=*/true);
 
   CurrentConditions conditions;
   String error;
@@ -154,18 +152,14 @@ void fetchAndShowCurrentConditions() {
   bool fetched = false;
   for (int attempt = 0; attempt < 3 && !fetched && retryable; attempt++) {
     if (attempt > 0) {
-      const uint32_t retryStart = millis();
-      while (millis() - retryStart < 500) {
-        pumpLvgl();
-        delay(20);
-      }
+      delay(500);
     }
     fetched = fetchCurrentConditions(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
                                       configStore.unitsImperial(), conditions, error, retryable);
   }
 
   if (!fetched) {
-    showStatusScreen("Could not get weather", error.c_str(), /*loading=*/false);
+    sharedState.publishStatus("Could not get weather", error, /*loading=*/false);
     return;
   }
 
@@ -177,7 +171,7 @@ void fetchAndShowCurrentConditions() {
 
   char title[32];
   snprintf(title, sizeof(title), "%d%s", static_cast<int>(conditions.temperature), unitSuffix);
-  showStatusScreen(title, subtitle, /*loading=*/false);
+  sharedState.publishStatus(title, subtitle, /*loading=*/false);
 }
 
 // Temporary: no hourly/daily UI exists yet (no dashboard yet at all — see
@@ -196,12 +190,11 @@ void fetchAndLogForecasts() {
   if (fetchHourlyForecast(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
                            configStore.unitsImperial(), hourly, hourlyCount, hourlyError, hourlyRetryable)) {
     for (size_t i = 0; i < hourlyCount; i++) {
-      Serial.printf("[main] hourly[%u]: %s %d %s\n", static_cast<unsigned>(i),
-                    hourly[i].displayDateTime.c_str(), static_cast<int>(hourly[i].temperature),
-                    hourly[i].condition.type.c_str());
+      Serial.printf("[net] hourly[%u]: %s %d %s\n", static_cast<unsigned>(i), hourly[i].displayDateTime.c_str(),
+                    static_cast<int>(hourly[i].temperature), hourly[i].condition.type.c_str());
     }
   } else {
-    Serial.printf("[main] hourly forecast failed: %s\n", hourlyError.c_str());
+    Serial.printf("[net] hourly forecast failed: %s\n", hourlyError.c_str());
   }
 
   settleWifiLink();
@@ -213,35 +206,50 @@ void fetchAndLogForecasts() {
   if (fetchDailyForecast(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
                           configStore.unitsImperial(), daily, dailyCount, dailyError, dailyRetryable)) {
     for (size_t i = 0; i < dailyCount; i++) {
-      Serial.printf("[main] daily[%u]: %s %d/%d %s\n", static_cast<unsigned>(i), daily[i].displayDate.c_str(),
+      Serial.printf("[net] daily[%u]: %s %d/%d %s\n", static_cast<unsigned>(i), daily[i].displayDate.c_str(),
                     static_cast<int>(daily[i].maxTemperature), static_cast<int>(daily[i].minTemperature),
                     daily[i].daytimeCondition.type.c_str());
     }
   } else {
-    Serial.printf("[main] daily forecast failed: %s\n", dailyError.c_str());
+    Serial.printf("[net] daily forecast failed: %s\n", dailyError.c_str());
+  }
+}
+
+void netTaskFn(void *) {
+  connectWifiOrRetryBoot();
+  resolveLocationIfNeeded();
+  fetchAndShowCurrentConditions();
+  fetchAndLogForecasts();
+
+  // One-shot for now — no dashboard exists yet to periodically refresh
+  // (see docs/firmware-architecture.md's concurrency section: a refresh
+  // loop belongs with the dashboard work, not bolted on here first).
+  // Nothing left for this task to do; matches today's behavior, where the
+  // old single-task loop() never refetched either.
+  vTaskDelete(nullptr);
+}
+
+// ---------------------------------------------------------------------
+// uiTask (core 0): LVGL/touch only. Never calls into WiFi/HTTP — the only
+// thing it does with netTask's output is render whatever SharedState last
+// published.
+// ---------------------------------------------------------------------
+
+void uiTaskFn(void *) {
+  for (;;) {
+    M5.update();
+    pumpLvgl();
+
+    SharedState::Status status;
+    if (sharedState.tryConsumeStatus(status)) {
+      showStatusScreen(status.title.c_str(), status.subtitle.c_str(), status.loading);
+    }
+
+    delay(5);
   }
 }
 
 }  // namespace
-
-// Overrides the Arduino core's weak default (cores/esp32/main.cpp) to give
-// setup()/loop()'s FreeRTOS task ("loopTask") more than the stock 8192-byte
-// stack. Note this is the *only* override that actually takes effect on
-// this precompiled-libs target: the seemingly obvious alternative — a
-// -DCONFIG_ARDUINO_LOOP_STACK_SIZE build flag — gets silently clobbered,
-// because the prebuilt framework-arduinoespressif32-libs package for this
-// board ships an unconditional `#define CONFIG_ARDUINO_LOOP_STACK_SIZE
-// 8192` in its own sdkconfig.h (no #ifndef guard), which wins over a
-// command-line -D regardless of definition order (confirmed by the
-// compiler's own "CONFIG_ARDUINO_LOOP_STACK_SIZE redefined" warning when
-// that was tried first).
-//
-// The extra headroom is for the stack-backed JsonDocument arenas in
-// weather.cpp/geocode.cpp (see json_arena_allocator.h and
-// docs/firmware-architecture.md's "Memory" section) — those are local
-// buffers on this same task's stack, on top of whatever LVGL, M5Unified,
-// WiFi, and HTTPClient's own call frames already use.
-size_t getArduinoLoopTaskStackSize() { return 16384; }
 
 void setup() {
   Serial.begin(115200);
@@ -250,22 +258,31 @@ void setup() {
   M5.begin(cfg);
 
   initDisplay();
+  sharedState.begin();
 
   configStore.begin();
 
+  // Provisioning runs here, synchronously, before the task split below —
+  // not on netTask. It owns LVGL directly (its own screens, its own
+  // lv_tick_inc()/lv_timer_handler() pump loop — see provisioning.cpp),
+  // which would race with uiTask's independent pumping of the same LVGL
+  // state from a different core. It's a one-time, single-task first-boot
+  // flow anyway, so there's no benefit to splitting it — only the ongoing
+  // WiFi-connect/geocode/weather-fetch flow below needs to.
   if (!configStore.isProvisioned()) {
     runProvisioning(configStore);
     ESP.restart();
   }
 
-  connectWifiOrRetryBoot();
-  resolveLocationIfNeeded();
-  fetchAndShowCurrentConditions();
-  fetchAndLogForecasts();
+  showStatusScreen("Starting...", "", /*loading=*/true);
+
+  xTaskCreatePinnedToCore(uiTaskFn, "uiTask", 8192, nullptr, 1, nullptr, 0);
+  xTaskCreatePinnedToCore(netTaskFn, "netTask", 16384, nullptr, 1, nullptr, 1);
+
+  // Nothing left for the default Arduino task to do — uiTask/netTask above
+  // own everything from here. Deletes itself rather than falling through
+  // to an empty loop().
+  vTaskDelete(nullptr);
 }
 
-void loop() {
-  M5.update();
-  pumpLvgl();
-  delay(5);
-}
+void loop() {}

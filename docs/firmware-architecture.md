@@ -185,12 +185,45 @@ it for however long the fetch takes.
 
 Source: [diagrams/sequence-diagram.puml](diagrams/sequence-diagram.puml).
 
-This is a bigger change than the allocator work above and depends on the
-`main.cpp` module split happening first (can't cleanly move "the networking
-half" to its own task while it's interleaved with direct LVGL calls in the
-same functions). Sequencing: module split → dashboard UI exists → task
-split, in that order — doing the task split before there's a persistent
-dashboard to keep responsive has no payoff yet.
+**Implemented, with one correction found along the way: provisioning
+stayed out of netTask.** `runProvisioning()` (`provisioning.cpp`) turned
+out to own LVGL directly — its own screens (`lv_obj_create(nullptr)` +
+`lv_screen_load()`), its own `lv_tick_inc()`/`lv_timer_handler()` pump
+loop, servicing its captive-portal DNS/HTTP server the whole time. Moving
+that onto netTask (core 1) while uiTask (core 0) independently calls
+`lv_timer_handler()` would be two cores touching LVGL's internal state
+at once — LVGL isn't thread-safe across cores without a lock around
+every call, which this doesn't have. Provisioning is also a one-time,
+single-task first-boot flow with nothing to parallelize against, so
+there's no payoff to splitting it anyway. It stays synchronous in
+`setup()`, before the split — the diagram above (drawn before this was
+checked against the actual provisioning code) shows it inside netTask,
+which is the one place this doc's proposal and the implementation
+diverge.
+
+What did land as designed:
+
+- `SharedState` (`include/shared_state.h`, `src/shared_state.cpp`): a
+  mutex-protected `Status{title, subtitle, loading}` with
+  `publishStatus()`/`tryConsumeStatus()`. Scoped to boot-status text only
+  — no dashboard exists yet to consume raw `CurrentConditions`/forecast
+  data, so that hand-off isn't built until something needs it (YAGNI).
+- `uiTaskFn` (core 0, 8KB stack): `M5.update()` + `pumpLvgl()` +
+  `tryConsumeStatus()` → `showStatusScreen()`, forever.
+- `netTaskFn` (core 1, 16KB stack — sized for the JSON arenas from the
+  Memory section above): WiFi connect → geocode-if-needed → weather
+  fetches, each step now a plain `delay()` instead of a
+  `pumpLvgl()`-interleaved wait loop, since uiTask independently keeps
+  LVGL alive on the other core. `vTaskDelete(nullptr)`s itself when done
+  — one-shot, matching today's behavior (no refresh loop yet; that's
+  dashboard work, not this phase's).
+- The `getArduinoLoopTaskStackSize()` override added in the Memory phase
+  became unnecessary and was removed: the JSON arenas now run inside
+  `netTaskFn`'s own explicitly-sized 16KB stack, not the default Arduino
+  `loopTask`. `setup()` itself now just brings up the display, runs
+  provisioning if needed, creates the two tasks, and deletes its own
+  task (`vTaskDelete(nullptr)`) — there's nothing left for the default
+  `loopTask`/`loop()` to do.
 
 ## Related
 

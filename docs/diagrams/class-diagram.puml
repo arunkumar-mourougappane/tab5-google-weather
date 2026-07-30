@@ -11,13 +11,17 @@ skinparam class {
 }
 skinparam stereotypeCBackgroundColor #D99A4E
 
-title Proposed module classes — solid = exists today, dashed = proposed
+title Module classes
 
-class NetTask <<FreeRTOS task, core 1>> {
+class Main <<setup(), before the split>> {
+  + setup()
+}
+
+class NetTaskFn <<FreeRTOS task, core 1>> {
   + run()
 }
 
-class UiTask <<FreeRTOS task, core 0>> {
+class UiTaskFn <<FreeRTOS task, core 0>> {
   + run()
 }
 
@@ -41,9 +45,24 @@ class ProvisioningServer <<free functions>> {
   + runProvisioning(config : ConfigStore&)
 }
 
-class "HttpJsonClient" as HttpJsonClient <<proposed, free functions>> #line.dashed {
-  + getJson(url, doc : JsonDocument&, outError, outRetryable) : bool
+class "HttpJsonClient" as HttpJsonClient <<free functions>> {
+  + httpGetJson(http, client, url, doc : JsonDocument&, outHttpCode, outBody) : bool
 }
+
+class "JsonArenaAllocator" as JsonArena {
+  + allocate(size) : void*
+  + deallocate(ptr)
+  + reallocate(ptr, newSize) : void*
+  + overflowed() : bool
+  + bytesUsed() : size_t
+}
+
+class "StackJsonDocument<N>" as StackJsonDocument {
+  + doc() : JsonDocument&
+  + overflowed() : bool
+  + bytesUsed() : size_t
+}
+StackJsonDocument *-- JsonArena
 
 class GeocodeClient <<free functions>> {
   + geocodeLocation(query, apiKey, outLat, outLon, outError, outRetryable) : bool
@@ -78,42 +97,47 @@ class DailyForecastPoint <<struct>> {
   daytimeCondition : WeatherCondition
 }
 
-class "SharedState" as SharedState <<proposed, mutex-protected>> #line.dashed {
+class "SharedState" as SharedState <<mutex-protected>> {
   - mutex_ : SemaphoreHandle_t
-  - current_ : CurrentConditions
-  - hourly_ : HourlyForecastPoint[8]
-  - daily_ : DailyForecastPoint[7]
-  + publish(current, hourly, daily)
-  + tryConsume(out) : bool
+  - status_ : Status
+  - dirty_ : bool
+  + publishStatus(title, subtitle, loading)
+  + tryConsumeStatus(out) : bool
 }
 
-class "DisplayManager" as DisplayManager <<proposed>> #line.dashed {
+class "DisplayManager" as DisplayManager {
   + initDisplay()
   + pumpLvgl()
   - lvglFlushCb()
   - lvglTouchReadCb()
 }
 
-class "BootUi" as BootUi <<proposed>> #line.dashed {
+class "BootUi" as BootUi {
   + showStatusScreen(title, subtitle, loading)
   + describeWifiStatus(status) : const char*
 }
 
-NetTask --> ProvisioningServer : first boot only
-NetTask --> ConfigStore : read/write settings
-NetTask --> GeocodeClient : resolve location once
-NetTask --> WeatherClient : poll on a timer
-NetTask --> SharedState : publish()
+Main --> ProvisioningServer : first boot only,\nsynchronous (owns LVGL\ndirectly - can't run\nalongside uiTaskFn)
+Main --> DisplayManager : initDisplay()
+Main --> NetTaskFn : xTaskCreatePinnedToCore(core 1)
+Main --> UiTaskFn : xTaskCreatePinnedToCore(core 0)
+ProvisioningServer --> ConfigStore : saveProvisioning()
+
+NetTaskFn --> ConfigStore : read/write settings
+NetTaskFn --> GeocodeClient : resolve location once
+NetTaskFn --> WeatherClient : fetch once (no\nrefresh loop yet)
+NetTaskFn --> SharedState : publishStatus()
 
 GeocodeClient --> HttpJsonClient : uses
 WeatherClient --> HttpJsonClient : uses
+GeocodeClient --> StackJsonDocument : parses into
+WeatherClient --> StackJsonDocument : parses into
 WeatherClient ..> CurrentConditions : fills
 WeatherClient ..> HourlyForecastPoint : fills
 WeatherClient ..> DailyForecastPoint : fills
-ProvisioningServer --> ConfigStore : saveProvisioning()
 
-UiTask --> DisplayManager : owns LVGL/touch
-UiTask --> BootUi : renders boot/status screens
-UiTask --> SharedState : tryConsume()
+UiTaskFn --> DisplayManager : owns LVGL/touch
+UiTaskFn --> BootUi : renders boot/status screens
+UiTaskFn --> SharedState : tryConsumeStatus()
 
 @enduml
