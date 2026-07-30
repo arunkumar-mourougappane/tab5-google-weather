@@ -138,6 +138,25 @@ WeatherCondition parseCondition(JsonVariantConst v) {
   return c;
 }
 
+void appendDailyPoints(JsonArrayConst days, DailyForecastPoint out[kMaxDailyPoints], size_t &outCount) {
+  for (JsonVariantConst day : days) {
+    if (outCount >= kMaxDailyPoints) {
+      break;
+    }
+    DailyForecastPoint &point = out[outCount++];
+    const int year = day["displayDate"]["year"] | 0;
+    const int month = day["displayDate"]["month"] | 0;
+    const int dayOfMonth = day["displayDate"]["day"] | 0;
+    char dateBuf[11];
+    snprintf(dateBuf, sizeof(dateBuf), "%04d-%02d-%02d", year, month, dayOfMonth);
+    point.displayDate = dateBuf;
+    point.daytimeCondition = parseCondition(day["daytimeForecast"]["weatherCondition"]);
+    point.maxTemperature = day["maxTemperature"]["degrees"] | 0.0f;
+    point.minTemperature = day["minTemperature"]["degrees"] | 0.0f;
+    point.precipitationProbabilityPercent = day["daytimeForecast"]["precipitation"]["probability"]["percent"] | 0;
+  }
+}
+
 }  // namespace
 
 bool fetchCurrentConditions(const String &apiKey, float lat, float lon, bool unitsImperial,
@@ -205,32 +224,56 @@ bool fetchDailyForecast(const String &apiKey, float lat, float lon, bool unitsIm
                          bool &outRetryable) {
   outCount = 0;
 
-  String url = String(kHost) + "/v1/forecast/days:lookup?key=" + apiKey + "&location.latitude=" +
-               String(lat, 6) + "&location.longitude=" + String(lon, 6) +
-               "&unitsSystem=" + unitsParam(unitsImperial) + "&days=" + String(kMaxDailyPoints) +
-               "&pageSize=" + String(kMaxDailyPoints);
+  // Split into two page requests (first 4 days, then the rest) instead of
+  // one 7-day call. The daily forecast has the widest per-entry payload of
+  // the three endpoints (day+night split, sun/moon events) and is always
+  // the 3rd HTTPS request in this app's boot sequence — on real hardware
+  // that combination crashed the esp-hosted SDIO driver
+  // (`assert failed: sdio_rx_get_buffer`) partway through reading the
+  // response body, even with the connection reused and a settle delay
+  // beforehand (see docs/hardware.md). Halving the body size is the next
+  // thing to try per that doc's notes; if this still crashes, the response
+  // size isn't the actual variable either and the SDIO driver itself needs
+  // investigating upstream.
+  constexpr size_t kFirstPageDays = 4;
 
-  JsonDocument doc;
-  if (!getJson(url, doc, outError, outRetryable)) {
-    return false;
+  const String baseUrl = String(kHost) + "/v1/forecast/days:lookup?key=" + apiKey + "&location.latitude=" +
+                          String(lat, 6) + "&location.longitude=" + String(lon, 6) +
+                          "&unitsSystem=" + unitsParam(unitsImperial) + "&days=" + String(kMaxDailyPoints);
+
+  // page-1's JsonDocument/body String are scoped to this block so they're
+  // freed before page 2's request, not held alive across it. Once, on real
+  // hardware, page 2 hit `esp-aes: Failed to allocate memory for start
+  // alignment buffer` mid-TLS-decrypt (a tiny DMA scratch allocation
+  // failing) despite ESP.getFreeHeap() reporting >60KB free beforehand —
+  // free heap isn't the same as an unfragmented block being available, and
+  // leaving page 1's parsed JSON resident through page 2's TLS handshake
+  // was unnecessary peak memory pressure at exactly the moment that
+  // allocation needs to succeed.
+  String pageToken;
+  {
+    JsonDocument doc;
+    if (!getJson(baseUrl + "&pageSize=" + String(kFirstPageDays), doc, outError, outRetryable)) {
+      return false;
+    }
+    appendDailyPoints(doc["forecastDays"].as<JsonArrayConst>(), out, outCount);
+    pageToken = doc["nextPageToken"] | "";
   }
 
-  JsonArrayConst days = doc["forecastDays"].as<JsonArrayConst>();
-  for (JsonVariantConst day : days) {
-    if (outCount >= kMaxDailyPoints) {
-      break;
+  if (pageToken.length() > 0 && outCount < kMaxDailyPoints) {
+    delay(500);  // beat between the two calls, same idea as settleWifiLink() in main.cpp
+
+    JsonDocument doc2;
+    String secondError;
+    bool secondRetryable = true;
+    const String url2 = baseUrl + "&pageSize=" + String(kMaxDailyPoints - outCount) + "&pageToken=" + pageToken;
+    if (getJson(url2, doc2, secondError, secondRetryable)) {
+      appendDailyPoints(doc2["forecastDays"].as<JsonArrayConst>(), out, outCount);
+    } else {
+      // A partial (4-day) forecast beats none — don't fail the whole call
+      // over the second page.
+      Serial.printf("[weather] daily page 2 failed: %s\n", secondError.c_str());
     }
-    DailyForecastPoint &point = out[outCount++];
-    const int year = day["displayDate"]["year"] | 0;
-    const int month = day["displayDate"]["month"] | 0;
-    const int dayOfMonth = day["displayDate"]["day"] | 0;
-    char dateBuf[11];
-    snprintf(dateBuf, sizeof(dateBuf), "%04d-%02d-%02d", year, month, dayOfMonth);
-    point.displayDate = dateBuf;
-    point.daytimeCondition = parseCondition(day["daytimeForecast"]["weatherCondition"]);
-    point.maxTemperature = day["maxTemperature"]["degrees"] | 0.0f;
-    point.minTemperature = day["minTemperature"]["degrees"] | 0.0f;
-    point.precipitationProbabilityPercent = day["daytimeForecast"]["precipitation"]["probability"]["percent"] | 0;
   }
 
   Serial.printf("[weather] daily: %u points\n", static_cast<unsigned>(outCount));

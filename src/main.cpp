@@ -264,10 +264,29 @@ void resolveLocationIfNeeded() {
 // the WiFi-scan retry loop — firing HTTPS requests immediately back-to-back
 // crashed the SDIO driver with `assert failed: sdio_rx_get_buffer` on real
 // hardware; this hasn't been root-caused, just worked around.
+//
+// 750ms wasn't enough on its own: with the shared/reused HTTPClient (see
+// weather.cpp's sharedClient()), the driver still asserted on the 3rd
+// back-to-back request, this time partway through reading the response body
+// rather than at connect time — pointing at sustained SDIO RX volume, not
+// just reconnect churn, as a second trigger for the same assert. Bumped to
+// give the link more recovery time between requests; if this specific
+// assert resurfaces even with this delay, that's evidence the real fix
+// needs to shrink the daily-forecast response (largest of the three) rather
+// than just wait longer.
+constexpr uint32_t kWifiSettleMs = 2000;
+
 void settleWifiLink() {
-  Serial.printf("[main] free heap: %u\n", ESP.getFreeHeap());
+  // Total free heap alone doesn't explain the esp-aes DMA-alignment-buffer
+  // allocation failure seen once on real hardware (free heap was >60KB both
+  // times) — logging the largest contiguous internal/DMA-capable block too,
+  // since that's what a tiny scratch-buffer allocation actually needs and
+  // fragmentation could starve it even with plenty of free heap overall.
+  Serial.printf("[main] free heap: %u (largest internal block: %u, largest DMA block: %u)\n",
+                ESP.getFreeHeap(), heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+                heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
   const uint32_t start = millis();
-  while (millis() - start < 750) {
+  while (millis() - start < kWifiSettleMs) {
     pumpLvgl();
     delay(20);
   }

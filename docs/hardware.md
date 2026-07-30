@@ -160,18 +160,42 @@ Two plausible causes were ruled out before landing on the real one:
   between each request made no difference — crashed at the exact same point
   regardless.
 
-What did fix it: reusing a single `WiFiClientSecure` + `HTTPClient` (with
-`http.setReuse(true)`) across all three calls instead of tearing down and
-reconnecting per request. All three endpoints are the same host
-(`weather.googleapis.com`), so there's no reason not to keep the connection
-open between them anyway — this cut three separate TLS
-handshake+teardown cycles down to one. Confirmed working end-to-end on
-device after the change. Root cause not fully understood (this reads as a
-fixed-size SDIO RX buffer pool in the vendored `esp-hosted` driver not being
-released cleanly on rapid disconnect/reconnect, but that's inference from
-the symptom, not something traced into the driver itself) — reusing the
-connection is a real fix for this project's access pattern, not confirmed to
-generalize to, say, hitting several different hosts back-to-back.
+What did fix it (for the reconnect case): reusing a single
+`WiFiClientSecure` + `HTTPClient` (with `http.setReuse(true)`) across all
+three calls instead of tearing down and reconnecting per request. All three
+endpoints are the same host (`weather.googleapis.com`), so there's no reason
+not to keep the connection open between them anyway — this cut three
+separate TLS handshake+teardown cycles down to one. Root cause not fully
+understood (this reads as a fixed-size SDIO RX buffer pool in the vendored
+`esp-hosted` driver not being released cleanly on rapid disconnect/reconnect,
+but that's inference from the symptom, not something traced into the driver
+itself) — reusing the connection is a real fix for this project's original
+crash, not confirmed to generalize to, say, hitting several different hosts
+back-to-back.
+
+**Update:** the same assert resurfaced later on real hardware even with the
+connection reused across all three calls — this time partway through
+`http.getString()` on the 3rd request (daily forecast) rather than at
+connect time, with the first two requests (current conditions, hourly)
+completing cleanly. So reconnect churn isn't the only trigger; sustained
+SDIO RX volume across several requests in a tight sequence looks like a
+second path to the same assert. A longer settle delay before the call
+(`kWifiSettleMs` in `main.cpp`, 750ms → 2s) made no difference — confirmed
+on hardware twice, identical crash at the identical instruction both times,
+consistent with the earlier "not timing/settling" finding above.
+
+**Resolved:** splitting the daily forecast into two smaller page requests
+(4 days, then 3, via the API's `pageToken`/`nextPageToken` cursor
+pagination — see `fetchDailyForecast()` in `src/weather.cpp`) instead of one
+7-day call stopped the assert across three separate test boots on real
+hardware. So response body size on the 3rd request, not request count or
+timing, was the actual trigger — halving the largest of the three payloads
+was enough. One of those three boots also hit an unrelated, non-fatal
+`esp-aes: Failed to allocate memory for start alignment buffer` /
+`IncompleteInput` on page 2 (a transient TLS/AES DMA-buffer allocation
+blip) — that's a different failure mode, and the app already degrades
+gracefully from it (keeps page 1's 4 days, logs the page-2 failure, keeps
+running), not a regression of the SDIO assert.
 
 Two other things worth knowing before debugging WiFi issues on this hardware:
 
