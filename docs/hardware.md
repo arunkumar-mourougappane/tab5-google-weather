@@ -197,6 +197,64 @@ blip) — that's a different failure mode, and the app already degrades
 gracefully from it (keeps page 1's 4 days, logs the page-2 failure, keeps
 running), not a regression of the SDIO assert.
 
+**Regressed, then identified as a known, unresolved upstream bug — not
+something fixable from this project's code.** After splitting the boot
+flow into `uiTaskFn`/`netTaskFn` on separate cores
+(docs/firmware-architecture.md's "Concurrency" section), the failure mode
+got *worse*: `esp-aes: Failed to allocate memory for start alignment
+buffer` started firing on the very first HTTPS request, on effectively
+every boot, rather than the 2nd/3rd. Bracketing the heap right before task
+creation and at the start of each task (`logHeapStats()` in `main.cpp`)
+ruled out the task stacks themselves as the cause — `largest_dma` was
+identical (110580 bytes) at all three points; creating the two tasks
+consumed free heap but didn't fragment anything. What actually happens:
+joining WiFi itself (`connectWifiOrRetryBoot()`) predictably consumes
+~50KB of the largest contiguous block (known lwIP/WiFi-driver overhead,
+unrelated to this project's code) — but even with **59KB still
+contiguous and DMA-capable** afterward, the AES scratch allocation (which
+only needs tens of bytes) still failed immediately. That ruled out "not
+enough memory" as the explanation entirely.
+
+Searching found the exact match: **[espressif/esp-hosted-mcu#144](https://github.com/espressif/esp-hosted-mcu/issues/144)**
+— "ESP32P4 + ESP32C6 sdio_rx_get_buffer and transport_drv_sta_tx assert
+failed" — the identical assert, on ESP-IDF/esp-hosted versions close to
+what this project pins, reported while receiving HTTP responses. **Open,
+no maintainer response, no fix**, as of this writing. The reporter tried
+buffer-size and delay adjustments — the same category of things tried
+above — without resolving it either.
+
+There is a documented mitigation upstream in principle: newer esp-hosted
+builds support relocating the SDIO transport's own buffer pool into PSRAM
+instead of internal RAM (surfaced as ESPHome's `esp32_hosted: use_psram`
+option), explicitly recommended when host firmware uses most of internal
+RAM — exactly this project's symptom. It isn't reachable here, though:
+checked the vendored `esp_hosted_transport_config.h`
+(`framework-arduinoespressif32-libs`) and this version's public config
+struct has no PSRAM flag, only `tx_queue_size`/`rx_queue_size`. Tried
+reducing those instead — also a dead end: `esp32-hal-hosted.c`'s
+`hostedInit()` (invoked automatically the first time `WiFi.mode()` runs)
+unconditionally rebuilds its config from `INIT_DEFAULT_HOST_SDIO_CONFIG()`
+and calls `esp_hosted_sdio_set_config()` itself, overwriting anything set
+beforehand; reconfiguring after `esp_hosted_init()` has already run isn't
+reliable either — the framework's own source has a telling comment on
+that exact call, `// uncomment when second init is fixed`, i.e. Espressif's
+own code acknowledges post-init reconfiguration is currently broken. Three
+separate "the obvious lever doesn't work on this precompiled-libs target"
+dead ends in a row (this one, the loop-stack-size build flag earlier in
+this doc, and `JsonDocument::memoryUsage()` in firmware-architecture.md)
+while chasing one confirmed-open upstream bug is where this stopped.
+
+**Where this lands:** accepted as a known, currently-unfixable-from-here
+upstream limitation, not chased further at the application level. The
+failure is already survivable rather than catastrophic: NVS-persisted
+config (`ConfigStore`) means the panic handler's automatic reboot just
+replays the boot sequence and retries, not a bricked device. Revisit if a
+future pioarduino platform bump brings in an esp-hosted version with the
+PSRAM buffer-pool option exposed through the public config API — worth
+checking against this issue specifically when evaluating any such bump,
+not just the WiFi-scan/backlight-flicker regressions already tracked
+above.
+
 Two other things worth knowing before debugging WiFi issues on this hardware:
 
 - The C6 runs its own **`esp_hosted` firmware image**, flashed to a dedicated

@@ -35,6 +35,20 @@ namespace {
 ConfigStore configStore;
 SharedState sharedState;
 
+// Diagnostic, kept permanently rather than ripped out post-investigation:
+// helped rule out uiTaskFn/netTaskFn's own stack allocations as the cause
+// of a since-identified SDIO driver assert (see docs/hardware.md's
+// "Regressed, then identified as a known, unresolved upstream bug"
+// section) — largest_dma was identical before task creation and at the
+// start of each task, pointing away from our own code and toward the
+// upstream esp-hosted issue documented there. Left in place since it's
+// cheap and the upstream bug is still open — useful if it resurfaces.
+void logHeapStats(const char *label) {
+  Serial.printf("[heap] %s: free=%u largest_internal=%u largest_dma=%u\n", label, ESP.getFreeHeap(),
+                heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+                heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
+}
+
 // ---------------------------------------------------------------------
 // netTask (core 1): WiFi connect, one-time geocode, weather fetch. Every
 // wait here is a plain delay() — no pumpLvgl() calls, unlike the old
@@ -216,6 +230,7 @@ void fetchAndLogForecasts() {
 }
 
 void netTaskFn(void *) {
+  logHeapStats("netTaskFn start");
   connectWifiOrRetryBoot();
   resolveLocationIfNeeded();
   fetchAndShowCurrentConditions();
@@ -236,6 +251,7 @@ void netTaskFn(void *) {
 // ---------------------------------------------------------------------
 
 void uiTaskFn(void *) {
+  logHeapStats("uiTaskFn start");
   for (;;) {
     M5.update();
     pumpLvgl();
@@ -276,6 +292,7 @@ void setup() {
 
   showStatusScreen("Starting...", "", /*loading=*/true);
 
+  logHeapStats("before task creation");
   xTaskCreatePinnedToCore(uiTaskFn, "uiTask", 8192, nullptr, 1, nullptr, 0);
   xTaskCreatePinnedToCore(netTaskFn, "netTask", 16384, nullptr, 1, nullptr, 1);
 
