@@ -252,16 +252,49 @@ void showWaitingScreen(const String &ssid) {
   lv_obj_set_style_text_align(explainer, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align(explainer, LV_ALIGN_TOP_MID, 0, 122);
 
-  lv_obj_t *qr = buildQrCanvas(g_waitingScreen, ssid);
-  lv_obj_align(qr, LV_ALIGN_LEFT_MID, 90, 50);
-  lv_obj_t *qrLabel = makeLabel(g_waitingScreen, "SCAN TO JOIN", 0xA89E8C, &lv_font_montserrat_20);
-  lv_obj_align_to(qrLabel, qr, LV_ALIGN_OUT_BOTTOM_MID, 0, 12);
+  // QR block (left) and the net-card/steps column (right), vertically
+  // centered against *each other* — matches the mockup's .setup-main grid
+  // (grid-template-columns + align-items:center). Previously each was
+  // independently positioned relative to the whole screen (QR centered on
+  // screen height +50, net card fixed at y=190), which only looked
+  // aligned by coincidence and confirmed on hardware to visibly mismatch
+  // once their actual content heights differed. A flex row with
+  // cross-axis centering lets LVGL compute both sides' real heights and
+  // center them against each other automatically, so this stays correct
+  // regardless of how long the SSID or wrapped step text ends up being.
+  lv_obj_t *mainRow = lv_obj_create(g_waitingScreen);
+  lv_obj_set_size(mainRow, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(mainRow, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(mainRow, 0, 0);
+  lv_obj_set_style_pad_all(mainRow, 0, 0);
+  lv_obj_set_flex_flow(mainRow, LV_FLEX_FLOW_ROW);
+  lv_obj_set_style_pad_column(mainRow, 60, 0);
+  lv_obj_set_flex_align(mainRow, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
+  lv_obj_clear_flag(mainRow, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_align(mainRow, LV_ALIGN_TOP_MID, 0, 210);
 
-  lv_obj_t *netCard = buildNetCard(g_waitingScreen, ssid);
-  lv_obj_align(netCard, LV_ALIGN_TOP_LEFT, 460, 190);
+  lv_obj_t *qrBlock = lv_obj_create(mainRow);
+  lv_obj_set_size(qrBlock, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(qrBlock, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(qrBlock, 0, 0);
+  lv_obj_set_style_pad_all(qrBlock, 0, 0);
+  lv_obj_set_flex_flow(qrBlock, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(qrBlock, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(qrBlock, 10, 0);
+  lv_obj_clear_flag(qrBlock, LV_OBJ_FLAG_SCROLLABLE);
+  buildQrCanvas(qrBlock, ssid);
+  makeLabel(qrBlock, "SCAN TO JOIN", 0xA89E8C, &lv_font_montserrat_20);
 
-  lv_obj_t *steps = buildStepList(g_waitingScreen, ssid);
-  lv_obj_align_to(steps, netCard, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 24);
+  lv_obj_t *rightColumn = lv_obj_create(mainRow);
+  lv_obj_set_size(rightColumn, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(rightColumn, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(rightColumn, 0, 0);
+  lv_obj_set_style_pad_all(rightColumn, 0, 0);
+  lv_obj_set_flex_flow(rightColumn, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(rightColumn, 24, 0);
+  lv_obj_clear_flag(rightColumn, LV_OBJ_FLAG_SCROLLABLE);
+  buildNetCard(rightColumn, ssid);
+  buildStepList(rightColumn, ssid);
 
   lv_obj_t *waitingLabel = makeLabel(g_waitingScreen, "Waiting for setup", 0xD99A4E, &lv_font_montserrat_20);
   lv_obj_align(waitingLabel, LV_ALIGN_BOTTOM_MID, 0, -26);
