@@ -390,8 +390,9 @@ void setup() {
   // flow anyway, so there's no benefit to splitting it — only the ongoing
   // WiFi-connect/geocode/weather-fetch flow below needs to.
   if (!configStore.isProvisioned()) {
+    // Never returns: runProvisioning() reboots the device itself once
+    // setup completes (see provisioning.h).
     runProvisioning(configStore);
-    ESP.restart();
   }
 
   showStatusScreen("Starting...", "", /*loading=*/true);

@@ -435,8 +435,8 @@ void runProvisioning(ConfigStore &config) {
     delay(2);
   }
 
-  // Let the success screen sit for a couple of seconds before the caller
-  // reboots into station mode, so it's not just a flash on screen.
+  // Let the success screen sit for a couple of seconds before restarting
+  // into station mode, so it's not just a flash on screen.
   const uint32_t successStart = millis();
   while (millis() - successStart < 2000) {
     const uint32_t now = millis();
@@ -449,4 +449,23 @@ void runProvisioning(ConfigStore &config) {
   server.stop();
   dnsServer.stop();
   WiFi.softAPdisconnect(true);
+
+  // Forces the reboot here rather than leaving it to the caller: this
+  // function used to just return and rely on main.cpp calling
+  // ESP.restart() immediately afterward, which worked but meant the
+  // guarantee "provisioning ends in a reboot" depended on every future
+  // caller remembering to do that — one extra step between "saved" and
+  // "actually restarts" that didn't need to exist. Self-contained now:
+  // however this function is called, it always ends in a restart.
+  LOG_I("provisioning", "setup complete, restarting\n");
+  ESP.restart();
+
+  // ESP.restart() triggers the reset immediately and never returns on real
+  // hardware, but its Arduino-core signature isn't itself marked noreturn,
+  // so the compiler can't see that — without this, it warns that a
+  // [[noreturn]] function "does return". Traps here instead of falling off
+  // the end in the (never-observed) case restart is somehow delayed.
+  while (true) {
+    delay(1000);
+  }
 }
