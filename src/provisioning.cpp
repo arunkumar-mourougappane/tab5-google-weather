@@ -111,9 +111,16 @@ lv_obj_t *buildQrCanvas(lv_obj_t *parent, const String &ssid) {
   return canvas;
 }
 
-// Cycles the "Waiting for setup" label's trailing dots, matching the
-// mockup's pulsing-dots footer (docs/mockups/provisioning.html
-// .setup-footer .dots) instead of a static ellipsis.
+// Cycles a trailing-dots label next to a fixed "Waiting for setup" label,
+// matching the mockup's pulsing-dots footer (docs/mockups/provisioning.html
+// .setup-footer .dots) instead of a static ellipsis. Deliberately a
+// separate label from the fixed text, not one label whose full string gets
+// rewritten each tick — rewriting "Waiting for setup" + dots as a single
+// centered label made the fixed text visibly jitter side to side each
+// tick, since its own width (and therefore its centered position) changed
+// along with the dot count. Anchoring a second, dots-only label to the
+// fixed label's right edge (see showWaitingScreen()) means the fixed text
+// never moves; only the dots grow/shrink from that fixed anchor point.
 lv_obj_t *g_waitingDotsLabel = nullptr;
 lv_timer_t *g_waitingDotsTimer = nullptr;
 
@@ -123,9 +130,7 @@ void waitingDotsTimerCb(lv_timer_t *timer) {
   step = (step + 1) % 4;
   const char *dots[] = {"", ".", "..", "..."};
   if (g_waitingDotsLabel != nullptr) {
-    String text = "Waiting for setup";
-    text += dots[step];
-    lv_label_set_text(g_waitingDotsLabel, text.c_str());
+    lv_label_set_text(g_waitingDotsLabel, dots[step]);
   }
 }
 
@@ -240,8 +245,17 @@ void showWaitingScreen(const String &ssid) {
   lv_obj_t *steps = buildStepList(g_waitingScreen, ssid);
   lv_obj_align_to(steps, netCard, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 24);
 
-  g_waitingDotsLabel = makeLabel(g_waitingScreen, "Waiting for setup", 0xD99A4E, &lv_font_montserrat_20);
-  lv_obj_align(g_waitingDotsLabel, LV_ALIGN_BOTTOM_MID, 0, -26);
+  lv_obj_t *waitingLabel = makeLabel(g_waitingScreen, "Waiting for setup", 0xD99A4E, &lv_font_montserrat_20);
+  lv_obj_align(waitingLabel, LV_ALIGN_BOTTOM_MID, 0, -26);
+
+  // Anchored to waitingLabel's right edge, not centered itself — its own
+  // width changes every tick as the dot count cycles, but that anchor
+  // point (waitingLabel's right edge) doesn't move, so growing/shrinking
+  // only extends further right rather than disturbing waitingLabel's
+  // position. Starts empty so nothing shows until the first tick.
+  g_waitingDotsLabel = makeLabel(g_waitingScreen, "", 0xD99A4E, &lv_font_montserrat_20);
+  lv_obj_align_to(g_waitingDotsLabel, waitingLabel, LV_ALIGN_OUT_RIGHT_MID, 2, 0);
+
   if (g_waitingDotsTimer != nullptr) {
     lv_timer_del(g_waitingDotsTimer);
   }
