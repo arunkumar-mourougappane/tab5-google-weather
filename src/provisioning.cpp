@@ -132,26 +132,56 @@ void waitingDotsTimerCb(lv_timer_t *timer) {
 // Bordered card showing the AP's own name/security, matching the mockup's
 // .net-card (docs/mockups/provisioning.html) rather than folding this into
 // plain paragraph text.
+//
+// Laid out with LVGL flex (a row of two flex-column sub-blocks), not two
+// independently lv_obj_align()-ed label pairs like the first version of
+// this function did. That version placed the network-name value at
+// TOP_LEFT and the security value at TOP_RIGHT with no knowledge of each
+// other's actual width — fine with a short placeholder, but confirmed on
+// real hardware to overlap once given this device's real SSID
+// ("Tab5-Weather-" + 4 hex digits from its MAC — see apSsid() below —
+// wider at the 28px font size than whatever was eyeballed originally).
+// Flex positions each block after the previous one in the row, so they
+// can't overlap regardless of how wide the actual SSID renders.
 lv_obj_t *buildNetCard(lv_obj_t *parent, const String &ssid) {
   lv_obj_t *card = lv_obj_create(parent);
-  lv_obj_set_size(card, 460, 92);
+  // Widened from the original 460px: "Tab5-Weather-XXXX" at 28px plus
+  // "Open, no password" at 20px need on the order of 490px combined just
+  // for the text itself, before any gap between the two blocks. 620px
+  // leaves comfortable room and still fits well within the 1280px screen
+  // at this card's x=460 position (see showWaitingScreen()).
+  lv_obj_set_size(card, 620, LV_SIZE_CONTENT);
   lv_obj_set_style_bg_color(card, lv_color_hex(0x1B1E22), 0);
   lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
   lv_obj_set_style_border_color(card, lv_color_hex(0x2A2E33), 0);
   lv_obj_set_style_border_width(card, 1, 0);
   lv_obj_set_style_radius(card, 10, 0);
   lv_obj_set_style_pad_all(card, 16, 0);
+  lv_obj_set_flex_flow(card, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(card, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
   lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
 
-  lv_obj_t *nameKey = makeLabel(card, "NETWORK NAME", 0xA89E8C, &lv_font_montserrat_20);
-  lv_obj_align(nameKey, LV_ALIGN_TOP_LEFT, 0, 0);
-  lv_obj_t *nameVal = makeLabel(card, ssid.c_str(), 0xD99A4E, &lv_font_montserrat_28);
-  lv_obj_align(nameVal, LV_ALIGN_TOP_LEFT, 0, 26);
+  lv_obj_t *nameBlock = lv_obj_create(card);
+  lv_obj_set_size(nameBlock, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(nameBlock, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(nameBlock, 0, 0);
+  lv_obj_set_style_pad_all(nameBlock, 0, 0);
+  lv_obj_set_flex_flow(nameBlock, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(nameBlock, 4, 0);
+  lv_obj_clear_flag(nameBlock, LV_OBJ_FLAG_SCROLLABLE);
+  makeLabel(nameBlock, "NETWORK NAME", 0xA89E8C, &lv_font_montserrat_20);
+  makeLabel(nameBlock, ssid.c_str(), 0xD99A4E, &lv_font_montserrat_28);
 
-  lv_obj_t *secKey = makeLabel(card, "SECURITY", 0xA89E8C, &lv_font_montserrat_20);
-  lv_obj_align(secKey, LV_ALIGN_TOP_RIGHT, 0, 0);
-  lv_obj_t *secVal = makeLabel(card, "Open, no password", 0xF0E9D8, &lv_font_montserrat_20);
-  lv_obj_align(secVal, LV_ALIGN_TOP_RIGHT, 0, 26);
+  lv_obj_t *secBlock = lv_obj_create(card);
+  lv_obj_set_size(secBlock, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(secBlock, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(secBlock, 0, 0);
+  lv_obj_set_style_pad_all(secBlock, 0, 0);
+  lv_obj_set_flex_flow(secBlock, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(secBlock, 4, 0);
+  lv_obj_clear_flag(secBlock, LV_OBJ_FLAG_SCROLLABLE);
+  makeLabel(secBlock, "SECURITY", 0xA89E8C, &lv_font_montserrat_20);
+  makeLabel(secBlock, "Open, no password", 0xF0E9D8, &lv_font_montserrat_20);
 
   return card;
 }
