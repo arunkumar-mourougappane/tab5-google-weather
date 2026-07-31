@@ -195,7 +195,13 @@ lv_obj_t *buildNetCard(lv_obj_t *parent, const String &ssid) {
 // one run-on paragraph.
 lv_obj_t *buildStepList(lv_obj_t *parent, const String &ssid) {
   lv_obj_t *list = lv_obj_create(parent);
-  lv_obj_set_size(list, 480, 190);
+  // Height is content-sized, not fixed: steps 1 and 3 below wrap to two
+  // lines at this width (confirmed too long for one line at this font
+  // size — the same class of "didn't check the actual rendered size"
+  // issue buildNetCard() had, caught before it shipped this time), and a
+  // fixed height risked clipping that extra line instead of just fitting
+  // it.
+  lv_obj_set_size(list, 480, LV_SIZE_CONTENT);
   lv_obj_set_style_bg_opa(list, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(list, 0, 0);
   lv_obj_set_style_pad_all(list, 0, 0);
@@ -203,12 +209,24 @@ lv_obj_t *buildStepList(lv_obj_t *parent, const String &ssid) {
   lv_obj_set_style_pad_row(list, 14, 0);
   lv_obj_clear_flag(list, LV_OBJ_FLAG_SCROLLABLE);
 
+  // Wording matches docs/mockups/provisioning.html's .step-list text
+  // exactly (see the <div class="step"> lines there), aside from the
+  // em-dash in step 2 substituted for a plain hyphen — see
+  // showWaitingScreen()'s wordmark comment for why (LVGL's built-in fonts
+  // don't have the glyph).
   char step1[128];
-  snprintf(step1, sizeof(step1), "1. Connect to \"%s\" (or scan the code)", ssid.c_str());
-  makeLabel(list, step1, 0xF0E9D8, &lv_font_montserrat_20);
-  makeLabel(list, "2. A setup page should open automatically -\n    if not, visit 192.168.4.1", 0xF0E9D8,
+  snprintf(step1, sizeof(step1), "1. Connect your phone or laptop to %s (or scan the code).", ssid.c_str());
+  lv_obj_t *step1Label = makeLabel(list, step1, 0xF0E9D8, &lv_font_montserrat_20);
+  lv_obj_set_width(step1Label, 480);
+  lv_label_set_long_mode(step1Label, LV_LABEL_LONG_WRAP);
+
+  makeLabel(list, "2. A setup page should open automatically -\n    if not, visit 192.168.4.1.", 0xF0E9D8,
             &lv_font_montserrat_20);
-  makeLabel(list, "3. Enter your Wi-Fi, location, and API key", 0xF0E9D8, &lv_font_montserrat_20);
+
+  lv_obj_t *step3Label = makeLabel(list, "3. Enter your home Wi-Fi, location, and Google Weather API key.",
+                                    0xF0E9D8, &lv_font_montserrat_20);
+  lv_obj_set_width(step3Label, 480);
+  lv_label_set_long_mode(step3Label, LV_LABEL_LONG_WRAP);
 
   return list;
 }
