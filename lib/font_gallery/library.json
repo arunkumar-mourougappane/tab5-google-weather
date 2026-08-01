@@ -1,0 +1,11 @@
+{
+  "name": "font_gallery",
+  "version": "1.0.0",
+  "description": "On-device LVGL font viewer: tap-to-advance gallery for comparing bitmap font candidates (size, family, subset) on real hardware before committing one to production UI.",
+  "keywords": ["lvgl", "font", "typography"],
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "dependencies": {
+    "lvgl/lvgl": "^9.2"
+  }
+}

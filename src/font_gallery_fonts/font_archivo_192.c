@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 192 px
  * Bpp: 4
- * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/font_test_ttf_cache.wLejIvdO9q/docs_mockups_assets_fonts_archivo-variable_woff2.ttf --size 192 --bpp 4 --format lvgl --symbols 0123456789° --no-compress --lv-font-name font_archivo_192 -o src/fonts_test/font_archivo_192.c
+ * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/font_gallery_ttf_cache.RX35YdiGhM/docs_mockups_assets_fonts_archivo-variable_woff2.ttf --size 192 --bpp 4 --format lvgl --symbols 0123456789° --no-compress --lv-font-name font_archivo_192 -o src/font_gallery_fonts/font_archivo_192.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

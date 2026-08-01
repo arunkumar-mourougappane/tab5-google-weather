@@ -1,4 +1,4 @@
-# Manifest for tools/gen_test_fonts.sh - one font/size to generate per
+# Manifest for tools/gen_font_gallery.sh - one font/size to generate per
 # line, pipe-delimited:
 #   lvgl_name|source_font|size_px|symbols|caption
 #
@@ -12,7 +12,7 @@
 #               this isn't meant to hold a full Latin charset per size.
 # caption     - shown on-device under the sample text.
 #
-# Add a line and rerun tools/gen_test_fonts.sh to test another
+# Add a line and rerun tools/gen_font_gallery.sh to test another
 # size/family/subset - no code changes needed.
 
 font_archivo_48|docs/mockups/assets/fonts/archivo-variable.woff2|48|0123456789°|Archivo 48px (current LVGL built-in ceiling)
