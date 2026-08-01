@@ -37,17 +37,25 @@ font_archivo_512|docs/mockups/assets/fonts/archivo-variable.woff2|512|0123456789
 
 # Full-Latin alphabet ladder, for label text (city name, condition,
 # day-of-week, etc.) rather than the hero number. Uppercase+lowercase+
-# digits+space+common punctuation, plus the non-ASCII glyphs
-# docs/mockups/dashboard.html actually renders on-device: ▲/▼ (hi/lo
-# indicators) and → ("expand →"). Deliberately excludes ← and — (em
-# dash) - those only appear in the mockup page's own dev-nav
-# breadcrumb/caption chrome, not in anything the device itself renders.
+# digits+space+common punctuation.
+#
+# docs/mockups/dashboard.html's own glyphs (▲/▼ for hi/lo, → for "expand
+# →") were tried here first and showed up as tofu/blank boxes on
+# hardware - turns out Archivo Variable's cmap has no glyph at all for
+# ▲/▼/→/← (confirmed: fontTools' getBestCmap() has no entry for U+25B2,
+# U+25BC, U+2192, or U+2190), so lv_font_conv silently emitted empty
+# glyphs for them rather than erroring. That's a real mismatch between
+# the mockup and the actual font file, not just a test-harness gap - the
+# production UI will need either different glyphs Archivo does support
+# (it has plain ↑/↓, U+2191/U+2193, just not the filled triangles) or a
+# second merged font/raster icon for these specific marks. Testing that
+# substitute here: ↑/↓ for hi/lo, plain ">" for the expand affordance.
 # Sizes bracket the dashboard mockup's label range (~10-25px at desktop
 # ~100 PPI) scaled up for this panel's ~294 PPI (see docs/rendering.md's
 # "moved every screen up a tier" precedent, roughly a 2.7-3x factor).
-font_archivo_alpha_28|docs/mockups/assets/fonts/archivo-variable.woff2|28|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,▲▼→|▲74° ▼58° · expand →|Archivo 28px, full Latin
-font_archivo_alpha_32|docs/mockups/assets/fonts/archivo-variable.woff2|32|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,▲▼→|▲74° ▼58° · expand →|Archivo 32px, full Latin
-font_archivo_alpha_40|docs/mockups/assets/fonts/archivo-variable.woff2|40|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,▲▼→|▲74° ▼58° · expand →|Archivo 40px, full Latin
-font_archivo_alpha_48|docs/mockups/assets/fonts/archivo-variable.woff2|48|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,▲▼→|▲74° ▼58° · expand →|Archivo 48px, full Latin
-font_archivo_alpha_64|docs/mockups/assets/fonts/archivo-variable.woff2|64|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,▲▼→|▲74° ▼58° · expand →|Archivo 64px, full Latin
-font_archivo_alpha_80|docs/mockups/assets/fonts/archivo-variable.woff2|80|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,▲▼→|▲74° ▼58° · expand →|Archivo 80px, full Latin
+font_archivo_alpha_28|docs/mockups/assets/fonts/archivo-variable.woff2|28|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 28px, full Latin
+font_archivo_alpha_32|docs/mockups/assets/fonts/archivo-variable.woff2|32|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 32px, full Latin
+font_archivo_alpha_40|docs/mockups/assets/fonts/archivo-variable.woff2|40|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 40px, full Latin
+font_archivo_alpha_48|docs/mockups/assets/fonts/archivo-variable.woff2|48|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 48px, full Latin
+font_archivo_alpha_64|docs/mockups/assets/fonts/archivo-variable.woff2|64|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 64px, full Latin
+font_archivo_alpha_80|docs/mockups/assets/fonts/archivo-variable.woff2|80|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 80px, full Latin

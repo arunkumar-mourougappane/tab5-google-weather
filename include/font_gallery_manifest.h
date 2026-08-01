@@ -34,12 +34,12 @@ static constexpr FontGalleryEntry kFontGalleryEntries[] = {
     {&font_archivo_256, "68°", "Archivo 256px"},
     {&font_archivo_384, "68°", "Archivo 384px"},
     {&font_archivo_512, "68°", "Archivo 512px (taller than the 720px panel)"},
-    {&font_archivo_alpha_28, "▲74° ▼58° · expand →", "Archivo 28px, full Latin"},
-    {&font_archivo_alpha_32, "▲74° ▼58° · expand →", "Archivo 32px, full Latin"},
-    {&font_archivo_alpha_40, "▲74° ▼58° · expand →", "Archivo 40px, full Latin"},
-    {&font_archivo_alpha_48, "▲74° ▼58° · expand →", "Archivo 48px, full Latin"},
-    {&font_archivo_alpha_64, "▲74° ▼58° · expand →", "Archivo 64px, full Latin"},
-    {&font_archivo_alpha_80, "▲74° ▼58° · expand →", "Archivo 80px, full Latin"},
+    {&font_archivo_alpha_28, "↑74° ↓58° · expand >", "Archivo 28px, full Latin"},
+    {&font_archivo_alpha_32, "↑74° ↓58° · expand >", "Archivo 32px, full Latin"},
+    {&font_archivo_alpha_40, "↑74° ↓58° · expand >", "Archivo 40px, full Latin"},
+    {&font_archivo_alpha_48, "↑74° ↓58° · expand >", "Archivo 48px, full Latin"},
+    {&font_archivo_alpha_64, "↑74° ↓58° · expand >", "Archivo 64px, full Latin"},
+    {&font_archivo_alpha_80, "↑74° ↓58° · expand >", "Archivo 80px, full Latin"},
 
 };
 
