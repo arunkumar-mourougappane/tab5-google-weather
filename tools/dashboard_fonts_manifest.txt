@@ -73,7 +73,8 @@ font_plexmono_hourtemp_13|docs/mockups/assets/fonts/plexmono-500.woff2|13|012345
 font_plexmono_hilo_18|docs/mockups/assets/fonts/plexmono-400.woff2|18|0123456789°↑↓HIGLOW/ |0
 font_plexmono_feels_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789°· :|0
 font_plexmono_statusright_13|docs/mockups/assets/fonts/plexmono-400.woff2|13|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 |0
-font_plexmono_dayrange_12|docs/mockups/assets/fonts/plexmono-400.woff2|12|0123456789°|0
+# 16px, not 12px - hi/lo temps bumped up, per request.
+font_plexmono_dayrange_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|0123456789°|0
 # 20px, not the mockup's 11.5px - matches font_archivo_statusname_20 so
 # the whole statusbar name/region line reads at one consistent size, per
 # hardware review.
@@ -88,6 +89,11 @@ font_plexmono_dailypop_11|docs/mockups/assets/fonts/plexmono-400.woff2|11|ABCDEF
 # 14px, not the mockup's 11px - matches the metrics grid's 2x2 resize.
 font_plexmono_metricspan_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789% |0
 font_plexmono_title_11|docs/mockups/assets/fonts/plexmono-400.woff2|11|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ·./-|0
+# 22px, not 11px - split off from font_plexmono_title_11 so only the
+# "7-DAY OUTLOOK" section title grows; the footer/hour-cell/hourly-
+# section titles that font is still shared by stay at 11px, per request.
+# Went 11->15->22 across successive review passes.
+font_plexmono_dailytitle_22|docs/mockups/assets/fonts/plexmono-400.woff2|22|ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -|0
 # 12px, not the mockup's 10px - matches the metrics grid's 2x2 resize.
 font_plexmono_metriclabel_12|docs/mockups/assets/fonts/plexmono-400.woff2|12|ABCDEFGHIJKLMNOPQRSTUVWXYZ |0
 font_plexmono_hourpop_10|docs/mockups/assets/fonts/plexmono-400.woff2|10|0123456789%|0

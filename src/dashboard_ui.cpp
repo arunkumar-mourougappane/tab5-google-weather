@@ -309,10 +309,14 @@ lv_obj_t *buildPrimaryColumn(lv_obj_t *parent) {
 DayRowWidgets buildDayRow(lv_obj_t *parent, bool isFirst) {
   DayRowWidgets w;
   w.row = makeRow(parent);
-  lv_obj_set_width(w.row, LV_PCT(100));
+  // Sized by the parent grid's LV_GRID_ALIGN_STRETCH (see buildDailyColumn),
+  // not LV_PCT/SIZE_CONTENT here - 7 rows stacked at their natural content
+  // height silently overflowed past the footer once the section title grew
+  // (LVGL flex doesn't shrink children to fit, unlike CSS flexbox), so each
+  // row's height is now whatever an even 1/7th of the available space is,
+  // guaranteed to fit regardless of title/font sizing elsewhere.
   lv_obj_set_style_pad_column(w.row, 12, 0);
   lv_obj_set_flex_align(w.row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_ver(w.row, 9, 0);
   if (!isFirst) {
     lv_obj_set_style_border_side(w.row, LV_BORDER_SIDE_TOP, 0);
     lv_obj_set_style_border_color(w.row, lv_color_hex(kLine), 0);
@@ -326,7 +330,7 @@ DayRowWidgets buildDayRow(lv_obj_t *parent, bool isFirst) {
   lv_obj_set_flex_grow(range, 1);
   lv_obj_set_style_pad_column(range, 8, 0);
   lv_obj_set_flex_align(range, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  w.lo = makeLabel(range, kTeal, &font_plexmono_dayrange_12);
+  w.lo = makeLabel(range, kTeal, &font_plexmono_dayrange_16);
 
   w.track = lv_obj_create(range);
   lv_obj_set_size(w.track, LV_PCT(100), 3);
@@ -348,7 +352,7 @@ DayRowWidgets buildDayRow(lv_obj_t *parent, bool isFirst) {
   lv_obj_set_style_radius(w.fill, 3, 0);
   lv_obj_clear_flag(w.fill, LV_OBJ_FLAG_SCROLLABLE);
 
-  w.hi = makeLabel(range, kEmber, &font_plexmono_dayrange_12);
+  w.hi = makeLabel(range, kEmber, &font_plexmono_dayrange_16);
 
   w.pop = makeLabel(w.row, kSub, &font_plexmono_dailypop_11);
   lv_obj_set_width(w.pop, 34);
@@ -365,15 +369,32 @@ lv_obj_t *buildDailyColumn(lv_obj_t *parent) {
   lv_obj_set_style_pad_top(col, 20, 0);
   lv_obj_set_style_pad_bottom(col, 16, 0);
 
-  lv_obj_t *title = makeLabel(col, kSub, &font_plexmono_title_11);
+  lv_obj_t *title = makeLabel(col, kSub, &font_plexmono_dailytitle_22);
   lv_label_set_text(title, "7-DAY OUTLOOK");
   lv_obj_set_style_pad_bottom(title, 10, 0);
 
-  lv_obj_t *rows = makeColumn(col);
-  lv_obj_set_width(rows, LV_PCT(100));
+  // Grid, not a flex column - kMaxDayRows (7) equal LV_GRID_FR(1) rows
+  // guarantee every row fits within whatever height this section ends up
+  // with, instead of stacking each row at its natural content height and
+  // silently overflowing past the footer (LVGL flex has no CSS-flexbox-
+  // style shrink-to-fit; confirmed on hardware once the title above grew).
+  lv_obj_t *rows = lv_obj_create(col);
+  lv_obj_set_size(rows, LV_PCT(100), LV_SIZE_CONTENT);
   lv_obj_set_flex_grow(rows, 1);
+  lv_obj_set_style_bg_opa(rows, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(rows, 0, 0);
+  lv_obj_set_style_pad_all(rows, 0, 0);
+  lv_obj_clear_flag(rows, LV_OBJ_FLAG_SCROLLABLE);
+  static int32_t rowsColDsc[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+  static int32_t rowsRowDsc[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1),
+                                  LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+  static_assert(kMaxDayRows == 7, "rowsRowDsc above is hand-written for 7 rows");
+  lv_obj_set_grid_dsc_array(rows, rowsColDsc, rowsRowDsc);
+  lv_obj_set_layout(rows, LV_LAYOUT_GRID);
   for (size_t i = 0; i < kMaxDayRows; i++) {
     g_dayRows[i] = buildDayRow(rows, i == 0);
+    lv_obj_set_grid_cell(g_dayRows[i].row, LV_GRID_ALIGN_STRETCH, 0, 1, LV_GRID_ALIGN_STRETCH,
+                          static_cast<int32_t>(i), 1);
   }
 
   lv_obj_t *footer = makeRow(col);
@@ -549,6 +570,28 @@ uint32_t severityColor(float value, float moderateThreshold, float highThreshold
   return value >= highThreshold ? kEmber : value >= moderateThreshold ? kBrass : kTeal;
 }
 
+// Zeller's congruence - plain integer arithmetic on displayDate's
+// "YYYY-MM-DD" (see weather.cpp), no date/time library needed. Returns
+// 0=Sunday..6=Saturday, or -1 if isoDate isn't well-formed.
+int weekdayFromIsoDate(const String &isoDate) {
+  if (isoDate.length() != 10) {
+    return -1;
+  }
+  int year = isoDate.substring(0, 4).toInt();
+  int month = isoDate.substring(5, 7).toInt();
+  const int day = isoDate.substring(8, 10).toInt();
+  if (month < 3) {
+    month += 12;
+    year -= 1;
+  }
+  const int k = year % 100;
+  const int j = year / 100;
+  const int h = (day + (13 * (month + 1)) / 5 + k + k / 4 + j / 4 + 5 * j) % 7;
+  return (h + 6) % 7;  // Zeller's h is 0=Saturday - rotate to 0=Sunday.
+}
+
+const char *kWeekdayAbbrev[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+
 }  // namespace
 
 void showDashboardScreen(const SharedState::DashboardSnapshot &data) {
@@ -654,14 +697,17 @@ void showDashboardScreen(const SharedState::DashboardSnapshot &data) {
     lv_obj_clear_flag(w.row, LV_OBJ_FLAG_HIDDEN);
 
     const DailyForecastPoint &day = data.daily[i];
-    // displayDate is "YYYY-MM-DD" (see weather.cpp) - Phase 1 just shows
-    // "Today" for index 0 and the raw date for the rest (day-of-week
-    // formatting needs a date library this project doesn't have yet).
     if (i == 0) {
       lv_label_set_text(w.name, "Today");
       lv_obj_set_style_text_color(w.name, lv_color_hex(kBrassStrong), 0);
+    } else if (i == 1) {
+      lv_label_set_text(w.name, "Tomorrow");
+      lv_obj_set_style_text_color(w.name, lv_color_hex(kInk), 0);
     } else {
-      lv_label_set_text(w.name, day.displayDate.c_str());
+      const int weekday = weekdayFromIsoDate(day.displayDate);
+      // Falls back to the raw "YYYY-MM-DD" if the API ever sends a
+      // malformed date - still shows something rather than nothing.
+      lv_label_set_text(w.name, weekday >= 0 ? kWeekdayAbbrev[weekday] : day.displayDate.c_str());
       lv_obj_set_style_text_color(w.name, lv_color_hex(kInk), 0);
     }
 
@@ -672,6 +718,16 @@ void showDashboardScreen(const SharedState::DashboardSnapshot &data) {
     lv_label_set_text(w.lo, loBuf2);
     lv_label_set_text(w.hi, hiBuf2);
 
+    // Forces LVGL to resolve the flex layout for the tree built above
+    // before reading geometry from it - without this, lv_obj_get_width()
+    // on a track that was just created this same call (the first-ever
+    // showDashboardScreen(), right after buildScreen()) still returns 0,
+    // since flex sizing is otherwise only resolved on the next
+    // lv_timer_handler() pass. That silently skipped the trackWidth > 0
+    // branch below, leaving that day's fill bar at its default
+    // (invisible) size for good - the intermittent "doesn't populate"
+    // symptom, not a data problem.
+    lv_obj_update_layout(w.track);
     const int32_t trackWidth = lv_obj_get_width(w.track);
     if (trackWidth > 0) {
       const int32_t left =

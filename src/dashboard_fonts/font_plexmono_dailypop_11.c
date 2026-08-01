@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 11 px
  * Bpp: 4
- * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/dashboard_fonts_ttf_cache.Pii8IFJ70a/docs_mockups_assets_fonts_plexmono-400_woff2.ttf --size 11 --bpp 4 --format lvgl --symbols ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%  --no-compress --lv-font-name font_plexmono_dailypop_11 -o src/dashboard_fonts/font_plexmono_dailypop_11.c
+ * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/dashboard_fonts_ttf_cache.VIPcELhWSi/docs_mockups_assets_fonts_plexmono-400_woff2.ttf --size 11 --bpp 4 --format lvgl --symbols ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%  --no-compress --lv-font-name font_plexmono_dailypop_11 -o src/dashboard_fonts/font_plexmono_dailypop_11.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
