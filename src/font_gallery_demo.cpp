@@ -20,7 +20,7 @@ void setup() {
   M5.begin(cfg);
 
   initDisplay();
-  fontGalleryBegin(kFontGalleryEntries, kFontGalleryEntryCount, "68°");
+  fontGalleryBegin(kFontGalleryEntries, kFontGalleryEntryCount);
 }
 
 void loop() {

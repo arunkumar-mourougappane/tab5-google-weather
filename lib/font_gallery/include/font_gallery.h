@@ -16,6 +16,10 @@
 
 struct FontGalleryEntry {
   const lv_font_t *font;
+  // Per-entry, not gallery-wide: different entries can hold entirely
+  // different glyph subsets (a digit-only hero font vs. a full-Latin
+  // label font), so there's no one sample string valid for all of them.
+  const char *sample;
   const char *caption;
 };
 
@@ -27,6 +31,5 @@ struct FontGalleryEntry {
 //
 // `entries`/`count` must outlive the gallery (a raw pointer is kept, no
 // copy) - a `static constexpr` array, as the generator emits, satisfies
-// this trivially. `sampleText` is shown in every entry's font; pass
-// something within every entry's generated glyph subset.
-void fontGalleryBegin(const FontGalleryEntry *entries, size_t count, const char *sampleText);
+// this trivially.
+void fontGalleryBegin(const FontGalleryEntry *entries, size_t count);

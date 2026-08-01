@@ -15,19 +15,31 @@ extern const lv_font_t font_archivo_192;
 extern const lv_font_t font_archivo_256;
 extern const lv_font_t font_archivo_384;
 extern const lv_font_t font_archivo_512;
+extern const lv_font_t font_archivo_alpha_28;
+extern const lv_font_t font_archivo_alpha_32;
+extern const lv_font_t font_archivo_alpha_40;
+extern const lv_font_t font_archivo_alpha_48;
+extern const lv_font_t font_archivo_alpha_64;
+extern const lv_font_t font_archivo_alpha_80;
 
 static constexpr FontGalleryEntry kFontGalleryEntries[] = {
-    {&font_archivo_48, "Archivo 48px (current LVGL built-in ceiling)"},
-    {&font_archivo_64, "Archivo 64px"},
-    {&font_archivo_80, "Archivo 80px"},
-    {&font_archivo_96, "Archivo 96px"},
-    {&font_archivo_108, "Archivo 108px (dashboard.html hero size)"},
-    {&font_archivo_128, "Archivo 128px"},
-    {&font_archivo_160, "Archivo 160px"},
-    {&font_archivo_192, "Archivo 192px"},
-    {&font_archivo_256, "Archivo 256px"},
-    {&font_archivo_384, "Archivo 384px"},
-    {&font_archivo_512, "Archivo 512px (taller than the 720px panel)"},
+    {&font_archivo_48, "68°", "Archivo 48px (current LVGL built-in ceiling)"},
+    {&font_archivo_64, "68°", "Archivo 64px"},
+    {&font_archivo_80, "68°", "Archivo 80px"},
+    {&font_archivo_96, "68°", "Archivo 96px"},
+    {&font_archivo_108, "68°", "Archivo 108px (dashboard.html hero size)"},
+    {&font_archivo_128, "68°", "Archivo 128px"},
+    {&font_archivo_160, "68°", "Archivo 160px"},
+    {&font_archivo_192, "68°", "Archivo 192px"},
+    {&font_archivo_256, "68°", "Archivo 256px"},
+    {&font_archivo_384, "68°", "Archivo 384px"},
+    {&font_archivo_512, "68°", "Archivo 512px (taller than the 720px panel)"},
+    {&font_archivo_alpha_28, "Partly Cloudy", "Archivo 28px, full Latin"},
+    {&font_archivo_alpha_32, "Partly Cloudy", "Archivo 32px, full Latin"},
+    {&font_archivo_alpha_40, "Partly Cloudy", "Archivo 40px, full Latin"},
+    {&font_archivo_alpha_48, "Partly Cloudy", "Archivo 48px, full Latin"},
+    {&font_archivo_alpha_64, "Partly Cloudy", "Archivo 64px, full Latin"},
+    {&font_archivo_alpha_80, "Partly Cloudy", "Archivo 80px, full Latin"},
 
 };
 

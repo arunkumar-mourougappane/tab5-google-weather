@@ -57,7 +57,7 @@ f.save('$cached')
 externs=""
 entries=""
 
-while IFS='|' read -r name source size symbols caption; do
+while IFS='|' read -r name source size symbols sample caption; do
   [[ -z "$name" || "$name" == \#* ]] && continue
 
   ttf="$(ttf_for "$source")"
@@ -80,7 +80,7 @@ while IFS='|' read -r name source size symbols caption; do
     -o "$OUT_DIR/${name}.c"
 
   externs="${externs}extern const lv_font_t ${name};\n"
-  entries="${entries}    {&${name}, \"${caption}\"},\n"
+  entries="${entries}    {&${name}, \"${sample}\", \"${caption}\"},\n"
 done <"$MANIFEST"
 
 {
