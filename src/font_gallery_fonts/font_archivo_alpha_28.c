@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 28 px
  * Bpp: 4
- * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/font_gallery_ttf_cache.4GvVnvRhJu/docs_mockups_assets_fonts_archivo-variable_woff2.ttf --size 28 --bpp 4 --format lvgl --symbols ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/, --no-compress --lv-font-name font_archivo_alpha_28 -o src/font_gallery_fonts/font_archivo_alpha_28.c
+ * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/font_gallery_ttf_cache.YQIcQt4nyA/docs_mockups_assets_fonts_archivo-variable_woff2.ttf --size 28 --bpp 4 --format lvgl --symbols ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,▲▼→ --no-compress --lv-font-name font_archivo_alpha_28 -o src/font_gallery_fonts/font_archivo_alpha_28.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
