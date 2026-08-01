@@ -20,14 +20,19 @@
 // under test/test_geocode/'s native (64-bit host) requirement of >4096
 // bytes for a representative response - ArduinoJson's internal
 // bookkeeping is pointer/size_t-sized, so a 64-bit host genuinely needs
-// more arena for the same JSON than 32-bit ESP32 does. 6144 clears that
-// with margin and matches weather.cpp's kWeatherJsonArenaBytes (already
-// hardware-proven for larger responses), making it a safe upper bound
-// for the real target even though it's not necessarily the minimum.
-// The tests that actually validate the real 32-bit number are
-// `pio test -e tab5` (on-device), not `pio test -e native` - see
-// platformio.ini's [env:native] comment.
-constexpr size_t kGeocodeJsonArenaBytes = 6144;
+// more arena for the same JSON than 32-bit ESP32 does. 6144 cleared that
+// locally (macOS/arm64/clang) but still overflowed in CI (Linux/x86_64/
+// gcc, GitHub Actions run 30712357498) - "native" isn't one fixed
+// number even across 64-bit hosts, since ArduinoJson's pool-slot struct
+// padding/alignment is toolchain-dependent too, not just pointer-width-
+// dependent as the note above originally assumed. 8192 clears both and
+// matches weather.cpp's kWeatherJsonArenaBytes (already hardware-proven
+// for larger responses), making it a safe upper bound for the real
+// target even though it's not necessarily the minimum. The test that
+// actually validates the real 32-bit number is `pio test -e tab5-test`
+// (on-device), not `pio test -e native` - see platformio.ini's
+// [env:native] comment.
+constexpr size_t kGeocodeJsonArenaBytes = 8192;
 
 // Keeps the parsed document sized against what geocodeLocation() actually
 // reads (status/error_message/first result's lat+lng+address_components)
