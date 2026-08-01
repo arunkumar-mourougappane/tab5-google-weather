@@ -49,23 +49,23 @@
 
   .hourly { padding: 14px 30px 16px; border-top: 1px solid var(--line); }
   .hourly .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-  .hourly .head .title { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sub); }
+  .hourly .head .title { font-family: 'IBM Plex Mono', monospace; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sub); }
   .hourly .head .title b { color: var(--ink); font-weight: 600; letter-spacing: 0.02em; }
   .hourly .head a { text-decoration: none; }
   .hourly .head a:hover { color: var(--brass-strong); }
-  .hourly-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
-  .hour { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 6px; position: relative; }
-  .hour .t { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--sub); }
-  .hour .bar-wrap { height: 46px; display: flex; align-items: flex-end; }
-  .hour .bar { width: 4px; border-radius: 2px; background: var(--brass); }
-  .hour .temp { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; font-weight: 500; }
-  .hour .pop { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: var(--teal); height: 12px; }
+  .hourly-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+  .hour { display: flex; flex-direction: column; align-items: center; gap: 7px; padding-top: 7px; position: relative; }
+  .hour .t { font-family: 'IBM Plex Mono', monospace; font-size: 16px; color: var(--sub); }
+  .hour .bar-wrap { height: 56px; display: flex; align-items: flex-end; }
+  .hour .bar { width: 6px; border-radius: 3px; background: var(--brass); }
+  .hour .temp { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 500; }
+  .hour .pop { font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: var(--teal); height: 16px; }
   .hour.now-hour .t { color: var(--brass-strong); font-weight: 600; }
   .hour.now-hour .bar { background: var(--brass-strong); }
   .hour.now-hour::before { content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 22px; height: 2px; background: var(--brass-strong); border-radius: 2px; }
 
   .daily { padding: 20px 26px 16px; display: flex; flex-direction: column; min-height: 0; }
-  .daily .title { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sub); margin-bottom: 10px; display: flex; justify-content: space-between; }
+  .daily .title { font-family: 'IBM Plex Mono', monospace; font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sub); margin-bottom: 10px; display: flex; justify-content: space-between; }
   .daily .title a { text-decoration: none; }
   .daily .title a:hover { color: var(--brass-strong); }
   .day-row { display: grid; grid-template-columns: 74px 26px 1fr auto; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
@@ -73,8 +73,8 @@
   .day-row .d { font-size: 14px; font-weight: 600; }
   .day-row .d.today { color: var(--brass-strong); }
   .day-row .icon { width: 22px; height: 22px; }
-  .day-row .range { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
-  .track { position: relative; height: 3px; background: var(--line); border-radius: 3px; flex: 1 1 auto; }
+  .day-row .range { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 16px; }
+  .track { position: relative; height: 6px; background: var(--line); border-radius: 3px; flex: 1 1 auto; }
   .track .fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--ember)); }
   .day-row .pop { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--sub); width: 34px; text-align: right; }
 
@@ -180,9 +180,9 @@
 
 <script>
   const hours = [
-    { t: "NOW", temp: 68, pop: 10 }, { t: "15", temp: 70, pop: 10 }, { t: "16", temp: 71, pop: 15 },
-    { t: "17", temp: 70, pop: 20 }, { t: "18", temp: 67, pop: 30 }, { t: "19", temp: 64, pop: 40 },
-    { t: "20", temp: 61, pop: 35 }, { t: "21", temp: 59, pop: 20 },
+    { t: "NOW", temp: 68, pop: 10 }, { t: "+1Hr", temp: 70, pop: 10 }, { t: "+2Hr", temp: 71, pop: 15 },
+    { t: "+3Hr", temp: 70, pop: 20 }, { t: "+4Hr", temp: 67, pop: 30 }, { t: "+5Hr", temp: 64, pop: 40 },
+    { t: "+6Hr", temp: 61, pop: 35 }, { t: "+7Hr", temp: 59, pop: 20 },
   ];
   const minT = Math.min(...hours.map(h => h.temp)), maxT = Math.max(...hours.map(h => h.temp));
   const hourlyRow = document.getElementById('hourly-row');
@@ -195,9 +195,9 @@
   });
 
   const days = [
-    { d: "Today", hi: 74, lo: 58, pop: 20 }, { d: "Wed", hi: 72, lo: 56, pop: 40 },
+    { d: "Today", hi: 74, lo: 58, pop: 20 }, { d: "Tomorrow", hi: 72, lo: 56, pop: 40 },
     { d: "Thu", hi: 69, lo: 54, pop: 60 }, { d: "Fri", hi: 65, lo: 51, pop: 70 },
-    { d: "Sat", hi: 68, lo: 52, pop: 30 }, { d: "Sun", hi: 71, lo: 55, pop: 10 },
+    { d: "Sat", hi: 68, lo: 52, pop: 30 }, { d: "Sun", hi: 71, lo: 55, pop: 10 }, { d: "Mon", hi: 70, lo: 57, pop: 15 },
   ];
   const dayLos = days.map(d => d.lo), dayHis = days.map(d => d.hi);
   const gMin = Math.min(...dayLos), gMax = Math.max(...dayHis);

@@ -332,8 +332,10 @@ DayRowWidgets buildDayRow(lv_obj_t *parent, bool isFirst) {
   lv_obj_set_flex_align(range, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   w.lo = makeLabel(range, kTeal, &font_plexmono_dayrange_16);
 
+  // 6px, not 3px - the grid-cell row height (see buildDailyColumn) leaves
+  // plenty of vertical slack around this, center-aligned, per request.
   w.track = lv_obj_create(range);
-  lv_obj_set_size(w.track, LV_PCT(100), 3);
+  lv_obj_set_size(w.track, LV_PCT(100), 6);
   lv_obj_set_flex_grow(w.track, 1);
   lv_obj_set_style_bg_color(w.track, lv_color_hex(kLine), 0);
   lv_obj_set_style_bg_opa(w.track, LV_OPA_COVER, 0);
@@ -343,7 +345,7 @@ DayRowWidgets buildDayRow(lv_obj_t *parent, bool isFirst) {
   lv_obj_clear_flag(w.track, LV_OBJ_FLAG_SCROLLABLE);
 
   w.fill = lv_obj_create(w.track);
-  lv_obj_set_size(w.fill, 4, 3);
+  lv_obj_set_size(w.fill, 4, 6);
   lv_obj_set_style_bg_color(w.fill, lv_color_hex(kTeal), 0);
   lv_obj_set_style_bg_grad_color(w.fill, lv_color_hex(kEmber), 0);
   lv_obj_set_style_bg_grad_dir(w.fill, LV_GRAD_DIR_HOR, 0);
@@ -416,17 +418,20 @@ lv_obj_t *buildDailyColumn(lv_obj_t *parent) {
 // .bar width 4.
 // ---------------------------------------------------------------------
 
-constexpr int32_t kBarWrapHeight = 46;
-constexpr int32_t kBarWidth = 4;
+// 56/6px, not 46/4px - each of the 8 columns has ~150px of width to work
+// with (1220px content width / 8), far more than a 4px bar needed, per
+// hardware review of the hourly strip's readability.
+constexpr int32_t kBarWrapHeight = 56;
+constexpr int32_t kBarWidth = 6;
 
 HourCellWidgets buildHourCell(lv_obj_t *parent) {
   HourCellWidgets w;
   w.cell = makeColumn(parent);
   lv_obj_set_flex_align(w.cell, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_row(w.cell, 6, 0);
-  lv_obj_set_style_pad_top(w.cell, 6, 0);
+  lv_obj_set_style_pad_row(w.cell, 7, 0);
+  lv_obj_set_style_pad_top(w.cell, 7, 0);
 
-  w.t = makeLabel(w.cell, kSub, &font_plexmono_title_11);
+  w.t = makeLabel(w.cell, kSub, &font_plexmono_hourclock_16);
 
   w.barWrap = lv_obj_create(w.cell);
   lv_obj_set_size(w.barWrap, kBarWidth, kBarWrapHeight);
@@ -441,11 +446,11 @@ HourCellWidgets buildHourCell(lv_obj_t *parent) {
   lv_obj_set_style_bg_color(w.bar, lv_color_hex(kBrass), 0);
   lv_obj_set_style_bg_opa(w.bar, LV_OPA_COVER, 0);
   lv_obj_set_style_border_width(w.bar, 0, 0);
-  lv_obj_set_style_radius(w.bar, 2, 0);
+  lv_obj_set_style_radius(w.bar, 3, 0);
   lv_obj_clear_flag(w.bar, LV_OBJ_FLAG_SCROLLABLE);
 
-  w.temp = makeLabel(w.cell, kInk, &font_plexmono_hourtemp_13);
-  w.pop = makeLabel(w.cell, kTeal, &font_plexmono_hourpop_10);
+  w.temp = makeLabel(w.cell, kInk, &font_plexmono_hourtemp_20);
+  w.pop = makeLabel(w.cell, kTeal, &font_plexmono_hourpop_14);
 
   return w;
 }
@@ -460,7 +465,7 @@ lv_obj_t *buildHourlyRow(lv_obj_t *parent) {
   lv_obj_set_style_border_color(section, lv_color_hex(kLine), 0);
   lv_obj_set_style_border_width(section, 1, 0);
 
-  lv_obj_t *title = makeLabel(section, kSub, &font_plexmono_title_11);
+  lv_obj_t *title = makeLabel(section, kSub, &font_plexmono_hourlytitle_16);
   lv_label_set_text(title, "HOURLY · NEXT 8 HOURS");
   lv_obj_set_style_pad_bottom(title, 8, 0);
 
@@ -473,7 +478,7 @@ lv_obj_t *buildHourlyRow(lv_obj_t *parent) {
   lv_obj_set_style_bg_opa(grid, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(grid, 0, 0);
   lv_obj_set_style_pad_all(grid, 0, 0);
-  lv_obj_set_style_pad_column(grid, 4, 0);
+  lv_obj_set_style_pad_column(grid, 8, 0);
   lv_obj_clear_flag(grid, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_grid_dsc_array(grid, colDsc, rowDsc);
   lv_obj_set_layout(grid, LV_LAYOUT_GRID);
@@ -762,7 +767,18 @@ void showDashboardScreen(const SharedState::DashboardSnapshot &data) {
     lv_obj_clear_flag(w.cell, LV_OBJ_FLAG_HIDDEN);
 
     const HourlyForecastPoint &hour = data.hourly[i];
-    lv_label_set_text(w.t, i == 0 ? "NOW" : hour.displayDateTime.c_str());
+    // Relative to now ("+1Hr", "+2Hr", ...) rather than the raw API hour
+    // number - reads at a glance without needing 12/24hr formatting, per
+    // request. Index-derived (each entry is exactly one hour after the
+    // last - see weather.cpp's forecastHours fetch), not parsed from
+    // hour.displayDateTime.
+    if (i == 0) {
+      lv_label_set_text(w.t, "NOW");
+    } else {
+      char hourOffsetBuf[8];
+      snprintf(hourOffsetBuf, sizeof(hourOffsetBuf), "+%uHr", static_cast<unsigned>(i));
+      lv_label_set_text(w.t, hourOffsetBuf);
+    }
 
     const float pct = 0.18f + ((hour.temperature - hourMin) / hourRange) * 0.82f;
     const int32_t barHeight = static_cast<int32_t>(pct * static_cast<float>(kBarWrapHeight));

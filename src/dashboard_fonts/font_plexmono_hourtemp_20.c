@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 20 px
  * Bpp: 4
- * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/dashboard_fonts_ttf_cache.vZ8OZa2CtA/docs_mockups_assets_fonts_plexmono-500_woff2.ttf --size 20 --bpp 4 --format lvgl --symbols 0123456789: --no-compress --lv-font-name font_plexmono_clock_20 -o src/dashboard_fonts/font_plexmono_clock_20.c
+ * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/dashboard_fonts_ttf_cache.vZ8OZa2CtA/docs_mockups_assets_fonts_plexmono-500_woff2.ttf --size 20 --bpp 4 --format lvgl --symbols 0123456789° --no-compress --lv-font-name font_plexmono_hourtemp_20 -o src/dashboard_fonts/font_plexmono_hourtemp_20.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -10,11 +10,11 @@
 #include "lvgl/lvgl.h"
 #endif
 
-#ifndef FONT_PLEXMONO_CLOCK_20
-#define FONT_PLEXMONO_CLOCK_20 1
+#ifndef FONT_PLEXMONO_HOURTEMP_20
+#define FONT_PLEXMONO_HOURTEMP_20 1
 #endif
 
-#if FONT_PLEXMONO_CLOCK_20
+#if FONT_PLEXMONO_HOURTEMP_20
 
 /*-----------------
  *    BITMAPS
@@ -151,10 +151,11 @@ static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
     0x0, 0x0, 0x4, 0xff, 0x90, 0x0, 0x0, 0x8f,
     0xf8, 0x0, 0x0,
 
-    /* U+003A ":" */
-    0x5e, 0xe5, 0xbf, 0xfb, 0x9f, 0xf9, 0x5, 0x50,
-    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x5, 0x50,
-    0x9f, 0xf9, 0xbf, 0xfb, 0x5e, 0xe5
+    /* U+00B0 "°" */
+    0x0, 0x38, 0x83, 0x0, 0x7, 0xff, 0xff, 0x60,
+    0x2f, 0xc1, 0x1c, 0xf2, 0x7f, 0x30, 0x3, 0xf7,
+    0x8f, 0x20, 0x2, 0xf8, 0x5f, 0x70, 0x7, 0xf5,
+    0xc, 0xfb, 0xbf, 0xc0, 0x1, 0xaf, 0xf9, 0x0
 };
 
 
@@ -174,7 +175,7 @@ static const lv_font_fmt_txt_glyph_dsc_t glyph_dsc[] = {
     {.bitmap_index = 578, .adv_w = 192, .box_w = 10, .box_h = 15, .ofs_x = 1, .ofs_y = 0},
     {.bitmap_index = 653, .adv_w = 192, .box_w = 12, .box_h = 15, .ofs_x = 0, .ofs_y = 0},
     {.bitmap_index = 743, .adv_w = 192, .box_w = 10, .box_h = 15, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 818, .adv_w = 192, .box_w = 4, .box_h = 11, .ofs_x = 4, .ofs_y = 0}
+    {.bitmap_index = 818, .adv_w = 192, .box_w = 8, .box_h = 8, .ofs_x = 2, .ofs_y = 7}
 };
 
 /*---------------------
@@ -187,7 +188,11 @@ static const lv_font_fmt_txt_glyph_dsc_t glyph_dsc[] = {
 static const lv_font_fmt_txt_cmap_t cmaps[] =
 {
     {
-        .range_start = 48, .range_length = 11, .glyph_id_start = 1,
+        .range_start = 48, .range_length = 10, .glyph_id_start = 1,
+        .unicode_list = NULL, .glyph_id_ofs_list = NULL, .list_length = 0, .type = LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY
+    },
+    {
+        .range_start = 176, .range_length = 1, .glyph_id_start = 11,
         .unicode_list = NULL, .glyph_id_ofs_list = NULL, .list_length = 0, .type = LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY
     }
 };
@@ -213,7 +218,7 @@ static lv_font_fmt_txt_dsc_t font_dsc = {
     .cmaps = cmaps,
     .kern_dsc = NULL,
     .kern_scale = 0,
-    .cmap_num = 1,
+    .cmap_num = 2,
     .bpp = 4,
     .kern_classes = 0,
     .bitmap_format = 0,
@@ -230,9 +235,9 @@ static lv_font_fmt_txt_dsc_t font_dsc = {
 
 /*Initialize a public general font descriptor*/
 #if LVGL_VERSION_MAJOR >= 8
-const lv_font_t font_plexmono_clock_20 = {
+const lv_font_t font_plexmono_hourtemp_20 = {
 #else
-lv_font_t font_plexmono_clock_20 = {
+lv_font_t font_plexmono_hourtemp_20 = {
 #endif
     .get_glyph_dsc = lv_font_get_glyph_dsc_fmt_txt,    /*Function pointer to get glyph's data*/
     .get_glyph_bitmap = lv_font_get_bitmap_fmt_txt,    /*Function pointer to get glyph's bitmap*/
@@ -254,5 +259,5 @@ lv_font_t font_plexmono_clock_20 = {
 
 
 
-#endif /*#if FONT_PLEXMONO_CLOCK_20*/
+#endif /*#if FONT_PLEXMONO_HOURTEMP_20*/
 

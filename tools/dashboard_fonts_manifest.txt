@@ -65,7 +65,9 @@ font_plexmono_clock_20|docs/mockups/assets/fonts/plexmono-500.woff2|20|012345678
 # 26px, not the mockup's 17px - the metrics grid moved from 1x4 to 2x2
 # (more room per cell) and got sized up to match, per hardware review.
 font_plexmono_metricvalue_26|docs/mockups/assets/fonts/plexmono-500.woff2|26|0123456789.|0
-font_plexmono_hourtemp_13|docs/mockups/assets/fonts/plexmono-500.woff2|13|0123456789°|0
+# 16px, not 13px - hourly strip readability pass (each of the 8 columns
+# has ~150px of width to work with vs. a ~4px bar, plenty of slack).
+font_plexmono_hourtemp_20|docs/mockups/assets/fonts/plexmono-500.woff2|20|0123456789°|0
 
 # --- IBM Plex Mono, weight 400 (default - no font-weight set in CSS) ---
 # 18/16px, not the mockup's 14/13px - same "fill the unused space"
@@ -89,6 +91,16 @@ font_plexmono_dailypop_11|docs/mockups/assets/fonts/plexmono-400.woff2|11|ABCDEF
 # 14px, not the mockup's 11px - matches the metrics grid's 2x2 resize.
 font_plexmono_metricspan_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789% |0
 font_plexmono_title_11|docs/mockups/assets/fonts/plexmono-400.woff2|11|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ·./-|0
+# 16px, not 11px - split off from font_plexmono_title_11 (still used by
+# the footer text) so only the "HOURLY · NEXT 8 HOURS" section title
+# grows, same readability pass as the hour cells and the daily title.
+font_plexmono_hourlytitle_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ·-|0
+# 13px, not 11px - split off from font_plexmono_title_11 (still used by
+# the section title/footer text) so only the per-column hour label
+# ("NOW", "13", ...) grows, same readability pass as hourtemp/hourpop.
+# +Hr added - relative labels ("+1Hr", "+2Hr", ...) instead of the raw
+# API hour number, per request.
+font_plexmono_hourclock_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|0123456789NOW+Hr|0
 # 22px, not 11px - split off from font_plexmono_title_11 so only the
 # "7-DAY OUTLOOK" section title grows; the footer/hour-cell/hourly-
 # section titles that font is still shared by stay at 11px, per request.
@@ -96,7 +108,8 @@ font_plexmono_title_11|docs/mockups/assets/fonts/plexmono-400.woff2|11|ABCDEFGHI
 font_plexmono_dailytitle_22|docs/mockups/assets/fonts/plexmono-400.woff2|22|ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -|0
 # 12px, not the mockup's 10px - matches the metrics grid's 2x2 resize.
 font_plexmono_metriclabel_12|docs/mockups/assets/fonts/plexmono-400.woff2|12|ABCDEFGHIJKLMNOPQRSTUVWXYZ |0
-font_plexmono_hourpop_10|docs/mockups/assets/fonts/plexmono-400.woff2|10|0123456789%|0
+# 12px, not 10px - same hourly-strip readability pass.
+font_plexmono_hourpop_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|0123456789%|0
 
 # --- Archivo (variable font, default instance) ---
 # Condition text and location name are API/user-driven strings (not a

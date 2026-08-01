@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 16 px
  * Bpp: 4
- * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/dashboard_fonts_ttf_cache.vZ8OZa2CtA/docs_mockups_assets_fonts_plexmono-400_woff2.ttf --size 16 --bpp 4 --format lvgl --symbols 0123456789° --no-compress --lv-font-name font_plexmono_dayrange_16 -o src/dashboard_fonts/font_plexmono_dayrange_16.c
+ * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/dashboard_fonts_ttf_cache.vZ8OZa2CtA/docs_mockups_assets_fonts_plexmono-400_woff2.ttf --size 16 --bpp 4 --format lvgl --symbols 0123456789NOW+Hr --no-compress --lv-font-name font_plexmono_hourclock_16 -o src/dashboard_fonts/font_plexmono_hourclock_16.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -10,11 +10,11 @@
 #include "lvgl/lvgl.h"
 #endif
 
-#ifndef FONT_PLEXMONO_DAYRANGE_16
-#define FONT_PLEXMONO_DAYRANGE_16 1
+#ifndef FONT_PLEXMONO_HOURCLOCK_16
+#define FONT_PLEXMONO_HOURCLOCK_16 1
 #endif
 
-#if FONT_PLEXMONO_DAYRANGE_16
+#if FONT_PLEXMONO_HOURCLOCK_16
 
 /*-----------------
  *    BITMAPS
@@ -22,6 +22,14 @@
 
 /*Store the image of the glyphs*/
 static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
+    /* U+002B "+" */
+    0x0, 0x0, 0x31, 0x0, 0x0, 0x0, 0xd, 0x60,
+    0x0, 0x0, 0x0, 0xd6, 0x0, 0x0, 0x0, 0xd,
+    0x60, 0x0, 0xf, 0xff, 0xff, 0xff, 0x90, 0x22,
+    0x2d, 0x82, 0x21, 0x0, 0x0, 0xd6, 0x0, 0x0,
+    0x0, 0xd, 0x60, 0x0, 0x0, 0x0, 0xd6, 0x0,
+    0x0,
+
     /* U+0030 "0" */
     0x0, 0x3c, 0xfe, 0x90, 0x0, 0x2f, 0xa4, 0x5e,
     0xa0, 0x9, 0xc0, 0x0, 0x3f, 0x20, 0xe7, 0x0,
@@ -107,10 +115,47 @@ static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
     0x0, 0x0, 0xe, 0x80, 0x0, 0x0, 0xad, 0x10,
     0x0, 0x8, 0xf3, 0x0, 0x0, 0x9e, 0x30, 0x0,
 
-    /* U+00B0 "°" */
-    0x8, 0xec, 0x40, 0x7c, 0x36, 0xf2, 0xd4, 0x0,
-    0xb6, 0xd4, 0x0, 0xa7, 0x9b, 0x3, 0xf3, 0x1b,
-    0xff, 0x60, 0x0, 0x10, 0x0
+    /* U+0048 "H" */
+    0xba, 0x0, 0x0, 0xf5, 0xba, 0x0, 0x0, 0xf5,
+    0xba, 0x0, 0x0, 0xf5, 0xba, 0x0, 0x0, 0xf5,
+    0xba, 0x0, 0x0, 0xf5, 0xbf, 0xff, 0xff, 0xf5,
+    0xbb, 0x33, 0x33, 0xf5, 0xba, 0x0, 0x0, 0xf5,
+    0xba, 0x0, 0x0, 0xf5, 0xba, 0x0, 0x0, 0xf5,
+    0xba, 0x0, 0x0, 0xf5, 0xba, 0x0, 0x0, 0xf5,
+
+    /* U+004E "N" */
+    0xbf, 0x50, 0x0, 0xe5, 0xbf, 0xc0, 0x0, 0xe5,
+    0xba, 0xf2, 0x0, 0xe5, 0xb8, 0xc8, 0x0, 0xe5,
+    0xb8, 0x6d, 0x0, 0xe5, 0xb8, 0x1f, 0x40, 0xe5,
+    0xb8, 0xa, 0xa0, 0xe5, 0xb8, 0x4, 0xf0, 0xe5,
+    0xb8, 0x0, 0xe6, 0xe5, 0xb8, 0x0, 0x8c, 0xe5,
+    0xb8, 0x0, 0x2f, 0xf5, 0xb8, 0x0, 0xc, 0xf5,
+
+    /* U+004F "O" */
+    0x0, 0x3c, 0xfe, 0x90, 0x0, 0x2f, 0xb4, 0x5e,
+    0xa0, 0x9, 0xd0, 0x0, 0x3f, 0x20, 0xe7, 0x0,
+    0x0, 0xe7, 0xf, 0x50, 0x0, 0xc, 0x91, 0xf5,
+    0x0, 0x0, 0xba, 0x1f, 0x50, 0x0, 0xb, 0xa0,
+    0xf5, 0x0, 0x0, 0xc9, 0xe, 0x70, 0x0, 0xe,
+    0x70, 0x9d, 0x0, 0x3, 0xf2, 0x2, 0xfb, 0x45,
+    0xea, 0x0, 0x3, 0xcf, 0xe9, 0x0,
+
+    /* U+0057 "W" */
+    0x6c, 0x0, 0x0, 0x2, 0xf0, 0x5d, 0x0, 0x0,
+    0x3, 0xe0, 0x4e, 0x0, 0x0, 0x4, 0xd0, 0x2f,
+    0x0, 0xfa, 0x5, 0xc0, 0x1f, 0x13, 0xfd, 0x6,
+    0xb0, 0xf, 0x26, 0x9f, 0x8, 0xa0, 0xf, 0x3a,
+    0x6d, 0x49, 0x80, 0xe, 0x4d, 0x3a, 0x7a, 0x70,
+    0xd, 0x5f, 0x7, 0xab, 0x60, 0xb, 0x9d, 0x4,
+    0xdc, 0x50, 0xa, 0xea, 0x1, 0xfe, 0x40, 0x9,
+    0xf7, 0x0, 0xef, 0x30,
+
+    /* U+0072 "r" */
+    0xcf, 0xfe, 0x1a, 0xff, 0x22, 0x7e, 0x95, 0x22,
+    0x0, 0x5f, 0x30, 0x0, 0x0, 0x5f, 0x0, 0x0,
+    0x0, 0x5e, 0x0, 0x0, 0x0, 0x5e, 0x0, 0x0,
+    0x0, 0x5e, 0x0, 0x0, 0x12, 0x7e, 0x22, 0x20,
+    0xcf, 0xff, 0xff, 0xf2
 };
 
 
@@ -120,35 +165,39 @@ static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
 
 static const lv_font_fmt_txt_glyph_dsc_t glyph_dsc[] = {
     {.bitmap_index = 0, .adv_w = 0, .box_w = 0, .box_h = 0, .ofs_x = 0, .ofs_y = 0} /* id = 0 reserved */,
-    {.bitmap_index = 0, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
-    {.bitmap_index = 54, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
-    {.bitmap_index = 108, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 156, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
-    {.bitmap_index = 210, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
-    {.bitmap_index = 264, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 312, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 360, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 408, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
-    {.bitmap_index = 462, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 510, .adv_w = 154, .box_w = 6, .box_h = 7, .ofs_x = 2, .ofs_y = 5}
+    {.bitmap_index = 0, .adv_w = 154, .box_w = 9, .box_h = 9, .ofs_x = 0, .ofs_y = 1},
+    {.bitmap_index = 41, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
+    {.bitmap_index = 95, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
+    {.bitmap_index = 149, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 197, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
+    {.bitmap_index = 251, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
+    {.bitmap_index = 305, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 353, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 401, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 449, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
+    {.bitmap_index = 503, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 551, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 599, .adv_w = 154, .box_w = 8, .box_h = 12, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 647, .adv_w = 154, .box_w = 9, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
+    {.bitmap_index = 701, .adv_w = 154, .box_w = 10, .box_h = 12, .ofs_x = 0, .ofs_y = 0},
+    {.bitmap_index = 761, .adv_w = 154, .box_w = 8, .box_h = 9, .ofs_x = 1, .ofs_y = 0}
 };
 
 /*---------------------
  *  CHARACTER MAPPING
  *--------------------*/
 
-
+static const uint16_t unicode_list_0[] = {
+    0x0, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb,
+    0xc, 0xd, 0xe, 0x1d, 0x23, 0x24, 0x2c, 0x47
+};
 
 /*Collect the unicode lists and glyph_id offsets*/
 static const lv_font_fmt_txt_cmap_t cmaps[] =
 {
     {
-        .range_start = 48, .range_length = 10, .glyph_id_start = 1,
-        .unicode_list = NULL, .glyph_id_ofs_list = NULL, .list_length = 0, .type = LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY
-    },
-    {
-        .range_start = 176, .range_length = 1, .glyph_id_start = 11,
-        .unicode_list = NULL, .glyph_id_ofs_list = NULL, .list_length = 0, .type = LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY
+        .range_start = 43, .range_length = 72, .glyph_id_start = 1,
+        .unicode_list = unicode_list_0, .glyph_id_ofs_list = NULL, .list_length = 16, .type = LV_FONT_FMT_TXT_CMAP_SPARSE_TINY
     }
 };
 
@@ -173,7 +222,7 @@ static lv_font_fmt_txt_dsc_t font_dsc = {
     .cmaps = cmaps,
     .kern_dsc = NULL,
     .kern_scale = 0,
-    .cmap_num = 2,
+    .cmap_num = 1,
     .bpp = 4,
     .kern_classes = 0,
     .bitmap_format = 0,
@@ -190,9 +239,9 @@ static lv_font_fmt_txt_dsc_t font_dsc = {
 
 /*Initialize a public general font descriptor*/
 #if LVGL_VERSION_MAJOR >= 8
-const lv_font_t font_plexmono_dayrange_16 = {
+const lv_font_t font_plexmono_hourclock_16 = {
 #else
-lv_font_t font_plexmono_dayrange_16 = {
+lv_font_t font_plexmono_hourclock_16 = {
 #endif
     .get_glyph_dsc = lv_font_get_glyph_dsc_fmt_txt,    /*Function pointer to get glyph's data*/
     .get_glyph_bitmap = lv_font_get_bitmap_fmt_txt,    /*Function pointer to get glyph's bitmap*/
@@ -214,5 +263,5 @@ lv_font_t font_plexmono_dayrange_16 = {
 
 
 
-#endif /*#if FONT_PLEXMONO_DAYRANGE_16*/
+#endif /*#if FONT_PLEXMONO_HOURCLOCK_16*/
 
