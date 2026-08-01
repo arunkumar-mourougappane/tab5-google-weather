@@ -19,20 +19,8 @@ first-run setup. The three detail/alert screens from the mockups (tap-through
 Hourly, full 7-Day, Severe alert) aren't wired up yet — Dashboard doesn't
 navigate anywhere yet.
 
-- [x] Hardware, API, rendering, and build-tooling research ([docs/](docs/))
-- [x] UI mockups for all six screens ([docs/mockups/](docs/mockups/))
-- [x] PlatformIO project scaffold ([platformio.ini](platformio.ini))
-- [x] GitHub Actions CI — firmware build, native parser tests, on-device test compile check ([.github/workflows/build.yml](.github/workflows/build.yml))
-- [x] Display + touch (LVGL over M5GFX) — confirmed on a real Tab5 ([docs/rendering.md](docs/rendering.md) for the rotation/color-format gotchas)
-- [x] First-run provisioning (AP + setup web page) — confirmed end-to-end on real hardware, including WiFi network scanning (see [docs/hardware.md](docs/hardware.md) for the platform-version fix that took)
-- [x] Google Weather API client (current conditions + hourly + daily) — [src/weather.cpp](src/weather.cpp), confirmed on hardware
-- [x] Location resolution — Geocoding API turns the setup-time "City, ST"/ZIP into lat/lon + a display-friendly city/state ([docs/google-weather-api.md](docs/google-weather-api.md))
-- [x] Timezone resolution — Time Zone API resolves the dashboard clock's UTC offset, applied at display time only
-- [x] Dashboard screen wired to live data, self-refreshing every 10 minutes — confirmed on hardware ([src/dashboard_ui.cpp](src/dashboard_ui.cpp))
-- [x] Parser test suite (`test/`) for every API response shape, runnable natively or on-device ([docs/platformio-and-ci.md](docs/platformio-and-ci.md))
-- [ ] Tap-through Hourly-detail and full 7-Day-forecast screens
-- [ ] Severe alert screen
-- [ ] Weather condition icons (currently text-only / a placeholder glyph — see [docs/rendering.md](docs/rendering.md))
+Shipped as [v0.1.0](https://github.com/arunkumar-mourougappane/tab5-google-weather/releases/tag/v0.1.0)
+([RELEASE_NOTES.md](RELEASE_NOTES.md)). Full done/not-done checklist: [docs/roadmap.md](docs/roadmap.md).
 
 ## Building
 
@@ -85,6 +73,7 @@ Open [docs/mockups/index.html](docs/mockups/index.html) locally, or browse the [
 - [docs/rendering.md](docs/rendering.md) — LVGL + M5GFX approach for fast GUI response
 - [docs/platformio-and-ci.md](docs/platformio-and-ci.md) — board config and GitHub Actions build
 - [docs/firmware-architecture.md](docs/firmware-architecture.md) — module boundaries, stack-vs-heap JSON parsing, and the implemented dual-core (`uiTask`/`netTask`) task split
+- [docs/roadmap.md](docs/roadmap.md) — done/not-done checklist
 
 ## License
 
