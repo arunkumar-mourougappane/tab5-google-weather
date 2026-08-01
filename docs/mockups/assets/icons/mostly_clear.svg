@@ -1,0 +1,37 @@
+<!--
+  Weather condition icon: mostly clear (MOSTLY_CLEAR), distinct from
+  CLEAR's plain sun.svg and PARTLY_CLOUDY's partly_cloudy.svg. Sun with
+  7 of sun.svg's 8 rays - only the bottom-right diagonal is omitted,
+  since the cloud sits right where that ray would otherwise cross it;
+  every other ray is unobstructed - with a small cloud tucked separately
+  beside it, not overlapping - a previous version had the cloud
+  occluding ~60% of the sun, which read too similar to
+  partly_cloudy.svg's "cloud in front of the sun" composition (same
+  technique, just a different coverage percentage - not a strong enough
+  visual distinction, especially at the 26px day-row size). This
+  is a categorical difference instead: mostly_clear's sun is never
+  covered at all, only partly_cloudy's is. The small cloud reuses
+  cloud.svg's exact path (scaled via transform, stroke-width
+  compensated), positioned close beside the sun rather than tucked in
+  the far corner - an earlier placement left a large empty gap between
+  them that read as two unrelated symbols rather than one icon, per
+  hardware/visual review. No mockup defines this. See
+  include/weather_icon.h.
+-->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#d99a4e" stroke-width="1.8">
+    <circle cx="9.5" cy="8.5" r="5"/>
+    <g stroke-linecap="round">
+      <line x1="9.5" y1="-0.2" x2="9.5" y2="1.6"/>
+      <line x1="0.8" y1="8.5" x2="2.6" y2="8.5"/>
+      <line x1="2.9" y1="1.9" x2="4.2" y2="3.2"/>
+      <line x1="16.1" y1="1.9" x2="14.8" y2="3.2"/>
+      <line x1="2.9" y1="15.1" x2="4.2" y2="13.8"/>
+      <line x1="18.2" y1="8.5" x2="16.4" y2="8.5"/>
+      <line x1="9.5" y1="17.2" x2="9.5" y2="15.4"/>
+    </g>
+  </g>
+  <g transform="translate(12.5,12.3) scale(0.38)">
+    <path d="M6 18C3.5 18 1.5 16 1.5 13.6C1.5 11.4 3.1 9.6 5.2 9.3C5.9 6.5 8.5 4.5 11.5 4.5C15 4.5 17.9 7.2 18.2 10.7C20.4 11.1 22 13 22 15.2C22 17.7 19.9 19.7 17.3 19.7H6.5" stroke="#f0e9d8" stroke-width="4.2" stroke-linejoin="round"/>
+  </g>
+</svg>

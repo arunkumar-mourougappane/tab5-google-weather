@@ -1,0 +1,15 @@
+<!--
+  Weather condition icon: hail (HAIL, HAIL_SHOWERS). Cloud shape reused
+  from rain.svg's exact path (see snow.svg's comment on why); the solid
+  dots below are an original design (no mockup defines a hail icon),
+  distinct from snow's flake outlines and rain's drop lines. See
+  include/weather_icon.h.
+-->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5 14C2.8 14 1 12.2 1 10.1C1 8.1 2.4 6.5 4.3 6.2C5 3.9 7.1 2.3 9.6 2.3C12.7 2.3 15.3 4.7 15.6 7.7C17.7 8 19.3 9.7 19.3 11.8C19.3 14.1 17.4 16 15 16H5" stroke="#f0e9d8" stroke-width="1.5" stroke-linejoin="round"/>
+  <g fill="#a89e8c">
+    <circle cx="6" cy="19.5" r="1.3"/>
+    <circle cx="11" cy="20.5" r="1.3"/>
+    <circle cx="16" cy="19.5" r="1.3"/>
+  </g>
+</svg>

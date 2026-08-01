@@ -1,0 +1,17 @@
+<!--
+  Weather condition icon: heavy rain (HEAVY_RAIN, HEAVY_RAIN_SHOWERS,
+  MODERATE_TO_HEAVY_RAIN, RAIN_PERIODICALLY_HEAVY - anything containing
+  "HEAVY" once thunder/hail/snow have already been ruled out). Cloud
+  shape reused from rain.svg's exact path; 4 longer/thicker drops
+  instead of rain.svg's 3 shorter ones to read as visibly heavier at a
+  glance. No mockup defines this. See include/weather_icon.h.
+-->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5 14C2.8 14 1 12.2 1 10.1C1 8.1 2.4 6.5 4.3 6.2C5 3.9 7.1 2.3 9.6 2.3C12.7 2.3 15.3 4.7 15.6 7.7C17.7 8 19.3 9.7 19.3 11.8C19.3 14.1 17.4 16 15 16H5" stroke="#f0e9d8" stroke-width="1.5" stroke-linejoin="round"/>
+  <g stroke="#6fb3ac" stroke-width="1.7" stroke-linecap="round">
+    <line x1="4.5" y1="18.5" x2="3.3" y2="22"/>
+    <line x1="9" y1="18.5" x2="7.8" y2="22"/>
+    <line x1="13.5" y1="18.5" x2="12.3" y2="22"/>
+    <line x1="18" y1="18.5" x2="16.8" y2="22"/>
+  </g>
+</svg>

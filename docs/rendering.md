@@ -161,6 +161,96 @@ compression — a separate LVGL setting for glyphs whose metrics exceed the
 compact glyph-descriptor format, empirically found (via the font gallery)
 to bite somewhere around 256px+.
 
+## Icons
+
+Same "precompile everything, no runtime decode" philosophy as the fonts
+above, applied to the Dashboard's weather condition glyphs (the "now"
+section's hero glyph, and a small icon per 7-day outlook row).
+
+**Icon vocabulary started at exactly the 4 concepts the mockups define**
+— sun (clear), cloud (partly cloudy / the generic fallback), rain, and
+moon (the night-time substitute for clear/partly-cloudy specifically) —
+since that was the *entire* set any mockup with an icon actually defines
+(`dashboard.html`, `daily-forecast.html`, `hourly-detail.html`'s inline
+SVGs). It's since grown to **15**, in two rounds, both original designs
+with no mockup reference (see each `.svg`'s own header comment in
+`docs/mockups/assets/icons/` for the reasoning behind its look, e.g. why
+thunderstorm's bolt reuses the ember severity-color accent rather than
+introducing a new one):
+
+- Round one added `windy`/`light_rain`/`snow`/`hail`/`thunderstorm`/`fog`
+  — covering condition *families* the original 4 had no icon for at all.
+- Round two added `mostly_clear`/`partly_cloudy`/`night_cloudy`/
+  `heavy_rain`/`sleet` for finer accuracy within families that already
+  had *an* icon but were losing real distinctions: `PARTLY_CLOUDY` and
+  full `CLOUDY` overcast used to render identically (both `cloud`);
+  `MOSTLY_CLOUDY`/`CLOUDY` at night showed the exact same icon as during
+  the day (no night-cloud variant existed, unlike clear/partly-cloudy's
+  existing moon substitution); `HEAVY_RAIN` looked identical to plain
+  `RAIN`; `RAIN_AND_SNOW` (a wintry mix) rendered as plain `Snow`.
+
+`include/weather_icon.h`'s `bucketForCondition()` maps all 39
+`weatherCondition.type` values (plus `TYPE_UNSPECIFIED`) onto these 15 —
+see [google-weather-api.md](google-weather-api.md#current-conditions) for
+the full type→bucket table. `fog` is a special case: generated and
+available, but Google's condition-type enum has no dedicated fog/mist
+value, so nothing currently routes to it — sitting ready for a future
+heuristic (e.g. a low-visibility threshold) rather than reachable today.
+`mostly_clear`/`partly_cloudy`/`night_cloudy` also introduced a new
+technique the original 4 don't use: a *solid* background-filled cloud
+(not just an outline) positioned to actually occlude part of a sun or
+moon behind it, rather than sitting beside a symbol like the rain/snow/
+hail/thunderstorm icons do.
+
+**Pipeline**: the original 4 icons' vector art was extracted verbatim
+from the mockups' inline `<svg>` paths; every icon added since is an
+original design built the same way (plain line-art SVGs, same
+viewBox/stroke-weight/dark-theme-palette conventions, often reusing an
+existing icon's exact path as a starting point — e.g. `heavy_rain`/
+`sleet`/`thunderstorm` all reuse `rain.svg`'s cloud shape verbatim). All
+of it lives as standalone source files (`docs/mockups/assets/icons/*.svg`,
+dark-theme colors resolved to concrete hex since these render standalone,
+outside any stylesheet), then `tools/gen_dashboard_icons.sh` rasterizes
+each to PNG via `rsvg-convert` at the two sizes the Dashboard actually
+uses (130px hero, 26px day-row) and converts that to an LVGL
+`lv_image_dsc_t` C source via `tools/png_to_lvgl_image.py`.
+
+That last step is a small hand-rolled converter, not LVGL's own
+`lv_img_conv` npm tool (the naive choice, since `gen_dashboard_fonts.sh`
+already reaches for `lv_font_conv` the same way) — confirmed by reading
+`lv_img_conv`'s source that its last published version (0.4.0) still
+emits LVGL v8's old packed-uint32 image header (`cf | w<<10 | h<<21`),
+predating v9's real `lv_image_header_t` struct
+(`magic`/`cf`/`flags`/`w`/`h`/`stride` as actual fields, see
+`.pio/libdeps/tab5/lvgl/src/draw/lv_image_dsc.h`) this project's LVGL
+9.5.0 expects. Its C output doesn't compile as a valid v9
+`lv_image_dsc_t` initializer, so `png_to_lvgl_image.py` emits that struct
+directly instead — `LV_COLOR_FORMAT_ARGB8888` (uncompressed, 4
+bytes/pixel), chosen over `RGB565A8`/RLE compression because the icon set
+is small (30 images at 15 icons × 2 sizes, ~1.05MB total against the
+6.25MB OTA budget, 44.2% flash used with everything else already in the
+firmware) and ARGB8888 is the format least likely to have a subtle
+byte-packing bug in a from-scratch converter — not a place to relearn the
+RGB565 byte-swap/packed-header lessons documented elsewhere on this page.
+
+**Static today, animation-ready.** `lv_animimg` (LVGL's frame-cycling
+widget) is enabled by default and needs no new dependency, but no
+animated source art exists anywhere in this project — building it is new
+art-direction work, not just a pipeline, so v1 ships static icons only.
+Each generated icon is already exactly the shape `lv_animimg` consumes
+(one `lv_image_dsc_t`) — a static icon is trivially "an animation with 1
+frame." Today's widgets are plain `lv_image_create()`/`lv_image_set_src()`;
+adding real animation later means generating N frames per icon (the
+manifest gains a frame-count/frame-source column) and swapping just that
+widget's creation call to `lv_animimg_create()` — the bucketing logic and
+manifest/generator shape don't change.
+
+**Verification**: `lib/icon_gallery` (sibling to `lib/font_gallery`, same
+"check a generated asset by eye on hardware before trusting it" purpose)
+shows every generated icon at both sizes, captioned, side by side — run
+with `pio run -e icon-gallery -t upload` and compare against
+`dashboard.html`/`daily-forecast.html` open in a browser.
+
 ## Why not the PPA (yet)
 
 The ESP32-P4's PPA/DMA2D hardware accelerator can offload fills, blends,

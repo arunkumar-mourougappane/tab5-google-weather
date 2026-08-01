@@ -1,0 +1,17 @@
+<!--
+  Weather condition icon: fog/mist. No mockup defines this - original
+  design, matching the existing set's line weight (1.7) and sub color
+  (hash a89e8c, dark-theme, docs/mockups/assets/style.css), same muted
+  tone the mockups use for the moon icon. Currently generated but not
+  wired to any real API condition type - Google's weatherCondition.type
+  enum has no dedicated fog value (see docs/google-weather-api.md's full
+  list) - available for a future heuristic (e.g. low visibility) rather
+  than reachable today. See include/weather_icon.h.
+-->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#a89e8c" stroke-width="1.7" stroke-linecap="round" fill="none">
+    <path d="M2.5 7 Q5.5 5 8.5 7 T14.5 7 T20.5 7"/>
+    <path d="M2.5 12.3 Q5.5 10.3 8.5 12.3 T14.5 12.3 T20.5 12.3" opacity="0.85"/>
+    <path d="M2.5 17.6 Q5.5 15.6 8.5 17.6 T14.5 17.6 T20.5 17.6" opacity="0.7"/>
+  </g>
+</svg>

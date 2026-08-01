@@ -1,0 +1,11 @@
+{
+  "name": "icon_gallery",
+  "version": "1.0.0",
+  "description": "On-device LVGL icon viewer: shows a set of generated lv_image_dsc_t icons side by side with captions, for comparing against the source mockups on real hardware before trusting them in the real UI.",
+  "keywords": ["lvgl", "image", "icons"],
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "dependencies": {
+    "lvgl/lvgl": "^9.2"
+  }
+}

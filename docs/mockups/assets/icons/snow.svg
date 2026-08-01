@@ -1,0 +1,16 @@
+<!--
+  Weather condition icon: snow (all *SNOW* condition types, see
+  docs/google-weather-api.md). Cloud shape reused from rain.svg's exact
+  path for compositional consistency (same cloud, different fall - rain
+  drops vs. snowflakes); the flakes below are an original design (no
+  mockup defines a snow icon), same ink color/line weight family as the
+  rest of the set. See include/weather_icon.h.
+-->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5 14C2.8 14 1 12.2 1 10.1C1 8.1 2.4 6.5 4.3 6.2C5 3.9 7.1 2.3 9.6 2.3C12.7 2.3 15.3 4.7 15.6 7.7C17.7 8 19.3 9.7 19.3 11.8C19.3 14.1 17.4 16 15 16H5" stroke="#f0e9d8" stroke-width="1.5" stroke-linejoin="round"/>
+  <g stroke="#f0e9d8" stroke-width="1.4" stroke-linecap="round">
+    <path d="M6 18.3V21.7 M4.3 20H7.7 M4.8 18.8L7.2 21.2 M4.8 21.2L7.2 18.8"/>
+    <path d="M11 19V22.4 M9.3 20.7H12.7 M9.8 19.5L12.2 21.9 M9.8 21.9L12.2 19.5"/>
+    <path d="M16 18.3V21.7 M14.3 20H17.7 M14.8 18.8L17.2 21.2 M14.8 21.2L17.2 18.8"/>
+  </g>
+</svg>

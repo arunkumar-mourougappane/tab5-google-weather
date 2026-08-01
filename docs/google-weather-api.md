@@ -54,6 +54,41 @@ Key response fields: `currentTime`, `timeZone`, `isDaytime`, `weatherCondition`
 (probability % + type + qpf amount), `thunderstormProbability`, `airPressure`,
 `wind` (direction deg/cardinal, speed, gust), `visibility`, `cloudCover`.
 
+`weatherCondition.type` (also used by the hourly/daily endpoints below, as
+`daytimeForecast`/`nighttimeForecast`'s own `weatherCondition`) is a 39-value
+enum plus `TYPE_UNSPECIFIED`, confirmed against Google's own reference
+docs — full list, since this project's icon bucketing
+(`include/weather_icon.h`, see [rendering.md](rendering.md#icons)) has to
+map every one of these down to its 15-icon set (sun/cloud/rain/moon are
+the mockups' own icon vocabulary; every other icon was added later,
+original designs with no mockup reference, for finer accuracy):
+
+| Type | Bucket |
+|---|---|
+| `CLEAR` | Sun (day) / Moon (night) |
+| `MOSTLY_CLEAR` | MostlyClear (day) / Moon (night) |
+| `PARTLY_CLOUDY` | PartlyCloudy (day) / Moon (night) |
+| `MOSTLY_CLOUDY`, `CLOUDY` | Cloud (day) / NightCloudy (night) |
+| `TYPE_UNSPECIFIED` | Cloud (fallback) |
+| `WINDY`, `WIND_AND_RAIN` | Windy |
+| `LIGHT_RAIN`, `LIGHT_RAIN_SHOWERS`, `LIGHT_TO_MODERATE_RAIN`, `CHANCE_OF_SHOWERS` | LightRain |
+| `SCATTERED_SHOWERS`, `RAIN_SHOWERS`, `RAIN` | Rain |
+| `HEAVY_RAIN_SHOWERS`, `MODERATE_TO_HEAVY_RAIN`, `HEAVY_RAIN`, `RAIN_PERIODICALLY_HEAVY` | HeavyRain |
+| Every other `*SNOW*` variant (`LIGHT_SNOW_SHOWERS`, `CHANCE_OF_SNOW_SHOWERS`, `SCATTERED_SNOW_SHOWERS`, `SNOW_SHOWERS`, `HEAVY_SNOW_SHOWERS`, `LIGHT_TO_MODERATE_SNOW`, `MODERATE_TO_HEAVY_SNOW`, `SNOW`, `LIGHT_SNOW`, `HEAVY_SNOW`, `SNOWSTORM`, `SNOW_PERIODICALLY_HEAVY`, `HEAVY_SNOW_STORM`, `BLOWING_SNOW`) | Snow |
+| `RAIN_AND_SNOW` | Sleet |
+| `HAIL`, `HAIL_SHOWERS` | Hail |
+| Every `*THUNDER*` variant (`THUNDERSTORM`, `THUNDERSHOWER`, `LIGHT_THUNDERSTORM_RAIN`, `SCATTERED_THUNDERSTORMS`, `HEAVY_THUNDERSTORM`) | Thunderstorm |
+| *(none)* | Fog - no dedicated fog/mist value exists in this enum at all; the icon is generated and available, not reachable from a condition type today |
+
+Note: heavy-vs-moderate is only distinguished for rain (`HeavyRain`), not
+snow — `HEAVY_SNOW`/`SNOWSTORM`/`BLOWING_SNOW` still render as the plain
+`Snow` icon. A reasonable next accuracy pass if it's ever worth it, not
+built yet.
+
+Verified by running every value above through `bucketForCondition()`
+directly (not just the handful `test/test_weather_icon/` covers by
+name) — no value falls through unexpectedly.
+
 ### Hourly forecast
 `GET /v1/forecast/hours:lookup?key=...&location.latitude=...&location.longitude=...&hours=8&pageSize=24`
 

@@ -1,0 +1,17 @@
+<!--
+  Weather condition icon: cloudy/overcast at night (MOSTLY_CLOUDY,
+  CLOUDY, when isDaytime is false) - the one condition pair that
+  previously showed the exact same icon regardless of time of day (an
+  overcast night reused the plain daytime cloud.svg). Composited from
+  moon.svg's crescent path (stroke color only, matching moon.svg's sub
+  tone) and cloud.svg's exact path (solid background-fill, same
+  occlusion technique as mostly_clear.svg/partly_cloudy.svg), cloud
+  dominant/moon mostly hidden to match the "fully overcast" condition
+  this maps to. No mockup defines this. See include/weather_icon.h.
+-->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M14.5 5A6 6 0 1 1 8 1a4.5 4.5 0 0 0 6.5 4Z" stroke="#a89e8c" stroke-width="1.5" stroke-linejoin="round" transform="translate(2,3)"/>
+  <g transform="translate(1.5,7.5) scale(0.98)">
+    <path d="M6 18C3.5 18 1.5 16 1.5 13.6C1.5 11.4 3.1 9.6 5.2 9.3C5.9 6.5 8.5 4.5 11.5 4.5C15 4.5 17.9 7.2 18.2 10.7C20.4 11.1 22 13 22 15.2C22 17.7 19.9 19.7 17.3 19.7H6.5" fill="#121417" stroke="#f0e9d8" stroke-width="1.55" stroke-linejoin="round"/>
+  </g>
+</svg>

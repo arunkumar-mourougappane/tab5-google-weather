@@ -1,0 +1,11 @@
+<!--
+  Weather condition icon: cloudy / partly cloudy (also the generic
+  fallback bucket - see include/weather_icon.h). Extracted verbatim from
+  docs/mockups/daily-forecast.html's inline "iconCloud" SVG path data,
+  the ink custom property resolved to its concrete dark-theme hex value
+  (hash f0e9d8, docs/mockups/assets/style.css) - see sun.svg's comment
+  for why.
+-->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6 18C3.5 18 1.5 16 1.5 13.6C1.5 11.4 3.1 9.6 5.2 9.3C5.9 6.5 8.5 4.5 11.5 4.5C15 4.5 17.9 7.2 18.2 10.7C20.4 11.1 22 13 22 15.2C22 17.7 19.9 19.7 17.3 19.7H6.5" stroke="#f0e9d8" stroke-width="1.7" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,54 @@
+# Manifest for tools/gen_dashboard_icons.sh - production weather-condition
+# icons for the Dashboard screen (src/dashboard_ui.cpp), one line per
+# generated image, pipe-delimited:
+#   lvgl_name|source_svg|size_px
+#
+# lvgl_name   - must be a valid C identifier, unique across the file.
+# source_svg  - path to a .svg under docs/mockups/assets/icons/, relative
+#               to the repo root. sun/cloud/rain/moon are verbatim
+#               extractions of the mockups' own inline icon SVGs; every
+#               other icon is an original design added later, no mockup
+#               reference for these - see each .svg's own header
+#               comment, and include/weather_icon.h for the bucketing
+#               logic that maps API condition types to these 15 icons.
+# size_px     - square render size, passed to rsvg-convert as both -w/-h.
+#
+# Two sizes per icon: kIconSizeHero (the "now" section's condition glyph,
+# dashboard_ui.cpp) and kIconSizeDayRow (the 7-day outlook's per-row
+# icon) - matches the mockup's own two icon footprints (.glyph vs.
+# .day-row .icon in dashboard.html's CSS).
+#
+# Order matches WeatherIconBucket's declaration order in
+# include/weather_icon.h - dashboard_ui.cpp's iconForBucket() looks up
+# by that enum's index, not by name, so keep the two in sync if either
+# changes.
+sun_hero|docs/mockups/assets/icons/sun.svg|130
+sun_dayrow|docs/mockups/assets/icons/sun.svg|26
+mostly_clear_hero|docs/mockups/assets/icons/mostly_clear.svg|130
+mostly_clear_dayrow|docs/mockups/assets/icons/mostly_clear.svg|26
+partly_cloudy_hero|docs/mockups/assets/icons/partly_cloudy.svg|130
+partly_cloudy_dayrow|docs/mockups/assets/icons/partly_cloudy.svg|26
+cloud_hero|docs/mockups/assets/icons/cloud.svg|130
+cloud_dayrow|docs/mockups/assets/icons/cloud.svg|26
+night_cloudy_hero|docs/mockups/assets/icons/night_cloudy.svg|130
+night_cloudy_dayrow|docs/mockups/assets/icons/night_cloudy.svg|26
+windy_hero|docs/mockups/assets/icons/windy.svg|130
+windy_dayrow|docs/mockups/assets/icons/windy.svg|26
+light_rain_hero|docs/mockups/assets/icons/light_rain.svg|130
+light_rain_dayrow|docs/mockups/assets/icons/light_rain.svg|26
+rain_hero|docs/mockups/assets/icons/rain.svg|130
+rain_dayrow|docs/mockups/assets/icons/rain.svg|26
+heavy_rain_hero|docs/mockups/assets/icons/heavy_rain.svg|130
+heavy_rain_dayrow|docs/mockups/assets/icons/heavy_rain.svg|26
+snow_hero|docs/mockups/assets/icons/snow.svg|130
+snow_dayrow|docs/mockups/assets/icons/snow.svg|26
+sleet_hero|docs/mockups/assets/icons/sleet.svg|130
+sleet_dayrow|docs/mockups/assets/icons/sleet.svg|26
+hail_hero|docs/mockups/assets/icons/hail.svg|130
+hail_dayrow|docs/mockups/assets/icons/hail.svg|26
+thunderstorm_hero|docs/mockups/assets/icons/thunderstorm.svg|130
+thunderstorm_dayrow|docs/mockups/assets/icons/thunderstorm.svg|26
+fog_hero|docs/mockups/assets/icons/fog.svg|130
+fog_dayrow|docs/mockups/assets/icons/fog.svg|26
+moon_hero|docs/mockups/assets/icons/moon.svg|130
+moon_dayrow|docs/mockups/assets/icons/moon.svg|26

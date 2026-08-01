@@ -1,0 +1,14 @@
+<!--
+  Weather condition icon: windy (WINDY, WIND_AND_RAIN). Unlike
+  sun/cloud/rain/moon, no mockup defines a windy icon - original design,
+  matching the existing set's line weight (1.7) and ink color (hash
+  f0e9d8, dark-theme, docs/mockups/assets/style.css) rather than an
+  extraction. See include/weather_icon.h for the bucketing this belongs to.
+-->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#f0e9d8" stroke-width="1.7" stroke-linecap="round" fill="none">
+    <path d="M2 7 H14 Q17 7 17 4.7 Q17 3 15.3 3"/>
+    <path d="M2 12 H19 Q22.5 12 22.5 9 Q22.5 7 20.3 7"/>
+    <path d="M2 17 H13"/>
+  </g>
+</svg>

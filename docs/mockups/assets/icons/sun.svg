@@ -1,0 +1,23 @@
+<!--
+  Weather condition icon: clear/sunny. Extracted verbatim from
+  docs/mockups/daily-forecast.html's inline "iconSun" SVG, same path
+  data, with the mockup's brass custom property resolved to its concrete
+  dark-theme hex value (hash d99a4e, docs/mockups/assets/style.css) since
+  this file is rasterized standalone (see tools/gen_dashboard_icons.sh),
+  not loaded inside the mockup's own stylesheet. The dashboard kiosk only
+  ever runs the dark palette (see src/dashboard_ui.cpp), so there is no
+  light-theme variant to keep in sync.
+-->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="5" stroke="#d99a4e" stroke-width="1.8"/>
+  <g stroke="#d99a4e" stroke-width="1.8" stroke-linecap="round">
+    <line x1="12" y1="2" x2="12" y2="4.5"/>
+    <line x1="12" y1="19.5" x2="12" y2="22"/>
+    <line x1="2" y1="12" x2="4.5" y2="12"/>
+    <line x1="19.5" y1="12" x2="22" y2="12"/>
+    <line x1="4.9" y1="4.9" x2="6.6" y2="6.6"/>
+    <line x1="17.4" y1="17.4" x2="19.1" y2="19.1"/>
+    <line x1="4.9" y1="19.1" x2="6.6" y2="17.4"/>
+    <line x1="17.4" y1="6.6" x2="19.1" y2="4.9"/>
+  </g>
+</svg>

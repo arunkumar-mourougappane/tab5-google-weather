@@ -1,0 +1,10 @@
+<!--
+  Weather condition icon: clear/partly-cloudy at night. Extracted verbatim
+  from docs/mockups/daily-forecast.html's inline "iconMoon" SVG path
+  data, the sub custom property resolved to its concrete dark-theme hex
+  value (hash a89e8c, docs/mockups/assets/style.css) - see sun.svg's
+  comment for why.
+-->
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="#a89e8c" stroke-width="1.7" stroke-linejoin="round"/>
+</svg>
