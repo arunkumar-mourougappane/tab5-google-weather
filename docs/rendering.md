@@ -124,9 +124,42 @@ looked at for that, before any dashboard code exists to need it yet:
   font is both large and rare) — not something to enable project-wide by
   default.
 
-  Not implemented — no dashboard code exists yet to need it. Worth
-  revisiting once the dashboard's actual hero-number treatment is being
-  built, not before.
+**Implemented.** `tools/gen_dashboard_fonts.sh` + `tools/dashboard_fonts_manifest.txt`
+drive `lv_font_conv` (via `npx`) the same way `tools/gen_font_gallery.sh`
+does for the dev-only font gallery, but generates production assets
+directly — `include/dashboard_fonts.h` (plain `extern const lv_font_t`
+declarations) + `src/dashboard_fonts/*.c` — consumed straight from
+`dashboard_ui.cpp`, no `lib/font_gallery` machinery involved. One
+generated font per exact (family, weight, size) pair the Dashboard screen
+actually uses, each with its own narrow symbol subset (e.g. the hero
+temperature only needs `0123456789°`), not a consolidated type scale —
+pixel-perfect to the mockup over minimizing font count, confirmed as the
+right tradeoff once flash usage came in at 28% with 21 such fonts.
+
+Two things this section predicted correctly, worth confirming landed as
+expected:
+
+- **Compression, on exactly the fonts predicted.** `LV_USE_FONT_COMPRESSED`
+  (`include/lv_conf.h`) is on project-wide, but only the hero temperature
+  (240px) and its `°F`/`°C` suffix (128px) are generated with it — every
+  other font stays uncompressed, matching this doc's "large and
+  rare-redraw" criterion exactly (the hero digit only repaints once per
+  refresh cycle, everything else repaints more often or is small enough
+  that the ~30% render-time cost isn't worth paying).
+- **A real stack cost from decompression, not just render time.** Growing
+  the hero font to 240px caused a hardware `Stack protection fault` in
+  `uiTask` (see [firmware-architecture.md](firmware-architecture.md)'s
+  concurrency section) — LVGL's RLE decompression of a glyph that large
+  needs meaningfully more of the calling task's stack than this doc's
+  "~30% slower to render" framing accounts for. Fixed by doubling
+  `uiTask`'s stack (8KB → 16KB), not by shrinking the font. Worth knowing
+  before pushing any font larger still: the render-time cost isn't the
+  only budget compression trades against.
+
+`LV_FONT_FMT_TXT_LARGE=1` (`platformio.ini`) was also needed alongside
+compression — a separate LVGL setting for glyphs whose metrics exceed the
+compact glyph-descriptor format, empirically found (via the font gallery)
+to bite somewhere around 256px+.
 
 ## Why not the PPA (yet)
 

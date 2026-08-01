@@ -24,14 +24,41 @@ board_upload.flash_size = 16MB
 framework = arduino
 upload_speed = 1500000
 monitor_speed = 115200
+build_src_filter = +<*> -<font_gallery_demo.cpp> -<font_gallery_fonts/>
 build_flags =
     -DLV_CONF_INCLUDE_SIMPLE
+    -Iinclude
     -DCORE_DEBUG_LEVEL=3
+    -Wl,-u,_printf_float
+    -Wl,-u,_scanf_float
+    -DLV_LVGL_H_INCLUDE_SIMPLE
+    -DLV_FONT_FMT_TXT_LARGE=1
 lib_deps =
     https://github.com/M5Stack/M5GFX.git
     https://github.com/M5Stack/M5Unified.git
     lvgl/lvgl@^9.2
+    ricmoo/QRCode@^0.0.1
+    bblanchon/ArduinoJson@^7
 ```
+
+See `platformio.ini` itself for the full, current, comment-annotated version —
+the block above is trimmed to the flags/deps worth calling out here; every
+line's *why* lives inline in the file, not duplicated in this doc. Three
+notable additions since the project's early scaffold, all added for the
+dashboard's generated bitmap fonts (`src/dashboard_fonts/`, via
+`tools/gen_dashboard_fonts.sh`):
+
+- `-DLV_LVGL_H_INCLUDE_SIMPLE` — `lv_font_conv`'s generated `.c` files
+  `#include "lvgl.h"`, not the `#include "lvgl/lvgl.h"` this project's own
+  code uses; this flag makes LVGL itself expose the simple include path so
+  both forms resolve.
+- `-DLV_FONT_FMT_TXT_LARGE=1` — the hero temperature font's 240px glyphs
+  exceed LVGL's compact glyph-descriptor format without it (`Too large font
+  or glyphs ... Enable LV_FONT_FMT_TXT_LARGE` at build time otherwise).
+- `-Wl,-u,_printf_float`/`-Wl,-u,_scanf_float` — ESP32's default
+  nano-newlib `printf` silently drops `%f` support unless explicitly linked
+  in (mis-renders float args rather than failing to compile); the dashboard
+  formats temperatures as floats.
 
 `m5stack-tab5-p4.json`'s `extra_flags` already bake in `BOARD_HAS_PSRAM`,
 `ARDUINO_USB_CDC_ON_BOOT=1`, and `ARDUINO_USB_MODE=1` — the three flags
@@ -133,6 +160,7 @@ pio run -e tab5
 
 Two things that bit us setting this up, worth knowing if `pio run` fails for
 you too:
+
 - **`pyyaml` isn't pulled in by `pip install platformio`**, but the
   `espressif32` builder's `arduino.py` framework script does `import yaml`
   directly and fails with `ModuleNotFoundError` if it's missing. Install it
@@ -164,15 +192,66 @@ Notes:
   [hardware.md](hardware.md)) is still landing there — pin once a release tag
   post-dates that support.
 
+## Test environments
+
+Three environments exist besides `[env:tab5]` (the real firmware) and
+`[env:font-gallery]` (the hero-digit legibility demo, see
+[rendering.md](rendering.md)):
+
+- **`[env:native]`** — runs `test/test_geocode/`, `test/test_timezone/`,
+  `test/test_weather/` on this machine, no board needed
+  (`platform = native`). These exercise the `*_parse.h` headers
+  (`geocode_parse.h`/`weather_parse.h`/`timezone_parse.h`) — each
+  endpoint's response filter and JSON arena size — against real or
+  schema-accurate captured response bodies, checking no parse error, no
+  arena overflow, and correct field extraction. Fast pre-flight sanity
+  check, not proof the real target is sized correctly: native's 64-bit
+  host needs meaningfully more arena bytes than the real 32-bit ESP32 for
+  identical JSON (ArduinoJson's internal bookkeeping is pointer/size_t-
+  sized) — confirmed while building this suite, three separate times, as
+  arena sizes that passed natively still overflowed on hardware.
+- **`[env:tab5-test]`** — the authoritative run: builds and executes the
+  same three suites on a real Tab5 over serial (`pio test -e tab5-test`).
+  A separate, minimal env rather than `[env:tab5]` extended with a test
+  filter — extending `[env:tab5]` directly hit a reproducible PlatformIO
+  bug where Library Manager reports Unity "installed" but it never lands
+  on disk (confirmed on two separate machines, not a sandbox artifact;
+  suspected cause: ESP-IDF's own bundled `unity` component colliding with
+  the registry `throwtheswitch/Unity` library's resolution on ESP32
+  targets specifically). `[env:tab5-test]` sidesteps it: same board/
+  platform, but none of the firmware's GUI-stack `lib_deps`
+  (M5GFX/M5Unified/lvgl/QRCode) or LVGL build flags, `throwtheswitch/
+  Unity` declared explicitly, `build_src_filter = -<*>` (the `*_parse.h`
+  headers are self-contained — ArduinoJson + `json_arena_allocator.h`
+  only — so nothing under `src/` needs to be compiled in), and
+  `lib_ignore = font_gallery` (PlatformIO's Library Dependency Finder
+  scans all of `lib/` regardless of `build_src_filter` and would
+  otherwise try to build `lib/font_gallery`, which hard-errors without an
+  LVGL flag this env deliberately doesn't set).
+- Deliberately **not tested**, in either env: `geocodeLocation()`/
+  `fetchCurrentConditions()`/`resolveTimezone()` themselves, or anything
+  using `HTTPClient`/`WiFiClientSecure`/Arduino `String` — those need
+  real ESP32 network I/O and can only be trusted on real hardware anyway
+  (a lesson this project has hit more than once, see
+  [hardware.md](hardware.md)). The `*_parse.h` layer is the one
+  Arduino-free pinch point where a bug is both likely (three arena-sizing
+  bugs found this way so far) and fully testable off-device.
+
+Run locally with `pio test -e native` / `pio test -e tab5-test` (the latter
+needs a Tab5 connected over USB); `pio test -e native -f test_weather` (or
+any single suite name) runs just one.
+
 ## GitHub Actions
 
-PlatformIO's own recommended workflow, adapted with `pio run -e tab5`:
+PlatformIO's own recommended workflow, adapted with `pio run -e tab5` plus
+the two test environments above:
 
 ```yaml
 name: PlatformIO CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -195,11 +274,18 @@ jobs:
         run: pip install --upgrade platformio pyyaml
       - name: Build firmware
         run: pio run -e tab5
+      - name: Run parser tests (native)
+        run: pio test -e native
+      - name: Build on-device test suite (compile only - no hardware attached in CI)
+        run: pio test -e tab5-test --without-uploading --without-testing
 ```
 
-This only verifies compilation (no hardware-in-the-loop test runner exists for
-this device), which is the honest scope for CI here — it catches build breaks
-on every push/PR, nothing more.
+No hardware-in-the-loop runner exists for this device, so `[env:tab5-test]`
+only gets a compile check in CI (`--without-uploading --without-testing`) —
+the actual on-device pass/fail still has to be run by hand,
+`pio test -e tab5-test`, before trusting a new arena size. `[env:native]`
+does run for real here, catching filter/field-mapping regressions on every
+push/PR even though it can't validate arena sizing on its own.
 
 ## Sources
 

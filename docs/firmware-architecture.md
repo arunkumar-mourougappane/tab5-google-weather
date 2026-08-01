@@ -18,10 +18,16 @@ with [PlantUML](https://plantuml.com)).
 
 | File | Owns |
 |------|------|
-| `src/main.cpp` | Display/LVGL bring-up, boot orchestration, status-screen UI, WiFi connect + retry, and the temporary boot-time weather fetch/log calls — five concerns in one file |
-| `src/config_store.cpp` / `include/config_store.h` | NVS-backed settings (WiFi, location, API key, resolved lat/lon) |
-| `src/geocode.cpp` / `include/geocode.h` | One-shot call to the Maps Geocoding API |
+| `src/main.cpp` | Boot orchestration only: display bring-up, WiFi connect + retry, location/timezone resolution, the netTask refresh loop, and creating `uiTask`/`netTask` — no LVGL calls of its own (see the module split below, now implemented) |
+| `src/display.cpp` / `include/display.h` | `initDisplay()`, `lvglFlushCb`, `lvglTouchReadCb`, `pumpLvgl()` — pure LVGL/M5GFX plumbing |
+| `src/boot_ui.cpp` / `include/boot_ui.h` | `showStatusScreen()` — the boot/connecting/error screen, rebuilt from scratch on every call (rare, simple) |
+| `src/dashboard_ui.cpp` / `include/dashboard_ui.h` | The Dashboard screen (`docs/mockups/dashboard.html`): built once, updated in place on every refresh — statusbar, current-conditions/hi-lo/metrics, 7-day outlook, 8-hour strip. Uses `src/dashboard_fonts/` (generated, see `tools/gen_dashboard_fonts.sh`) |
+| `src/shared_state.cpp` / `include/shared_state.h` | Mutex-protected hand-off between `netTask` and `uiTask`: `Status` (boot text) and `DashboardSnapshot` (current/hourly/daily + sync time + display location + units + UTC offset), each with its own `publish*()`/`tryConsume*()` pair |
+| `src/config_store.cpp` / `include/config_store.h` | NVS-backed settings (WiFi, location incl. resolved city/state, API key, resolved lat/lon, resolved timezone offsets) |
+| `src/geocode.cpp` / `include/geocode.h` | One-shot call to the Maps Geocoding API — resolves lat/lon **and** city/state from `address_components` |
+| `src/timezone_lookup.cpp` / `include/timezone_lookup.h` | One-shot call to the Maps Time Zone API — resolves `rawOffset`/`dstOffset` seconds for the dashboard clock |
 | `src/weather.cpp` / `include/weather.h` | Three calls to `weather.googleapis.com` (current/hourly/daily) |
+| `include/geocode_parse.h`, `include/timezone_parse.h`, `include/weather_parse.h` | Arduino-free: each endpoint's JSON filter + arena-size constant, shared by the production `.cpp` above and `test/` (see [platformio-and-ci.md](platformio-and-ci.md)) |
 | `src/provisioning.cpp` / `include/provisioning.h`, `include/provisioning_page.h` | First-run AP + setup web server |
 
 The per-API modules (`config_store`, `geocode`, `weather`, `provisioning`)
@@ -205,18 +211,31 @@ What did land as designed:
 
 - `SharedState` (`include/shared_state.h`, `src/shared_state.cpp`): a
   mutex-protected `Status{title, subtitle, loading}` with
-  `publishStatus()`/`tryConsumeStatus()`. Scoped to boot-status text only
-  — no dashboard exists yet to consume raw `CurrentConditions`/forecast
-  data, so that hand-off isn't built until something needs it (YAGNI).
-- `uiTaskFn` (core 0, 8KB stack): `M5.update()` + `pumpLvgl()` +
-  `tryConsumeStatus()` → `showStatusScreen()`, forever.
+  `publishStatus()`/`tryConsumeStatus()`, and — once the Dashboard screen
+  existed to consume it — a second, same-shaped pair:
+  `DashboardSnapshot{current, hourly[], hourlyCount, daily[], dailyCount,
+  syncedAtUnix, displayLocation, unitsImperial, utcOffsetSec}` with
+  `publishDashboard()`/`tryConsumeDashboard()`.
+- `uiTaskFn` (core 0, **16KB stack**, bumped up from an initial 8KB):
+  `M5.update()` + `pumpLvgl()` + `tryConsumeStatus()`/`tryConsumeDashboard()`
+  → `showStatusScreen()`/`showDashboardScreen()`, forever. The 8KB starting
+  size (matched to `netTaskFn`'s pre-dashboard estimate) held fine for the
+  status screen, but hardware caught a `Guru Meditation Error: ... Stack
+  protection fault` in this task once the hero temperature font grew to
+  240px — LVGL's RLE decompression of a compressed glyph that large needs
+  more of this task's stack than 8KB gives it (the panic's stack pointer
+  sat exactly at the task's upper stack bound, the classic overflow
+  signature). Doubled to 16KB, matching `netTaskFn`; no recurrence since.
 - `netTaskFn` (core 1, 16KB stack — sized for the JSON arenas from the
-  Memory section above): WiFi connect → geocode-if-needed → weather
-  fetches, each step now a plain `delay()` instead of a
-  `pumpLvgl()`-interleaved wait loop, since uiTask independently keeps
-  LVGL alive on the other core. `vTaskDelete(nullptr)`s itself when done
-  — one-shot, matching today's behavior (no refresh loop yet; that's
-  dashboard work, not this phase's).
+  Memory section above): WiFi connect → geocode-if-needed →
+  timezone-resolve-if-needed → `fetchDashboardSnapshot()` (current, hourly,
+  and daily) → `publishDashboard()`, then **loops** on a 10-minute
+  `delay(kRefreshIntervalMs)` rather than the one-shot
+  `vTaskDelete(nullptr)` originally planned here — the Dashboard screen
+  that motivated a refresh loop now exists. A failed fetch just logs and
+  leaves the last published snapshot on screen (no revert to an error
+  screen); rich offline/stale-data UX is out of scope until the status
+  screen (mockup screen 4) gets built out further.
 - The `getArduinoLoopTaskStackSize()` override added in the Memory phase
   became unnecessary and was removed: the JSON arenas now run inside
   `netTaskFn`'s own explicitly-sized 16KB stack, not the default Arduino

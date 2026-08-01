@@ -11,16 +11,28 @@ A weather dashboard for the [M5Stack Tab5](https://docs.m5stack.com/en/core/Tab5
 
 ## Status
 
-Early firmware — display, touch, first-run WiFi provisioning, and the Google Weather API client are all built; the real dashboard/hourly/daily UI isn't wired up yet (current conditions render on the boot-status screen chrome for now, just to prove the client end-to-end).
+Phase 1 dashboard is live on real hardware — the always-on Dashboard screen
+(current conditions, 8-hour strip, 7-day outlook) renders real data and
+refreshes itself every 10 minutes. Location and timezone are resolved
+automatically from whatever "City, ST" or ZIP a person enters during
+first-run setup. The three detail/alert screens from the mockups (tap-through
+Hourly, full 7-Day, Severe alert) aren't wired up yet — Dashboard doesn't
+navigate anywhere yet.
 
 - [x] Hardware, API, rendering, and build-tooling research ([docs/](docs/))
 - [x] UI mockups for all six screens ([docs/mockups/](docs/mockups/))
 - [x] PlatformIO project scaffold ([platformio.ini](platformio.ini))
-- [x] GitHub Actions firmware build CI ([.github/workflows/build.yml](.github/workflows/build.yml))
+- [x] GitHub Actions CI — firmware build, native parser tests, on-device test compile check ([.github/workflows/build.yml](.github/workflows/build.yml))
 - [x] Display + touch (LVGL over M5GFX) — confirmed on a real Tab5 ([docs/rendering.md](docs/rendering.md) for the rotation/color-format gotchas)
 - [x] First-run provisioning (AP + setup web page) — confirmed end-to-end on real hardware, including WiFi network scanning (see [docs/hardware.md](docs/hardware.md) for the platform-version fix that took)
-- [x] Google Weather API client (current conditions + hourly + daily) — [src/weather.cpp](src/weather.cpp), current conditions wired into boot flow; not yet hardware-tested
-- [ ] Dashboard/hourly/daily/alert screens wired to live data
+- [x] Google Weather API client (current conditions + hourly + daily) — [src/weather.cpp](src/weather.cpp), confirmed on hardware
+- [x] Location resolution — Geocoding API turns the setup-time "City, ST"/ZIP into lat/lon + a display-friendly city/state ([docs/google-weather-api.md](docs/google-weather-api.md))
+- [x] Timezone resolution — Time Zone API resolves the dashboard clock's UTC offset, applied at display time only
+- [x] Dashboard screen wired to live data, self-refreshing every 10 minutes — confirmed on hardware ([src/dashboard_ui.cpp](src/dashboard_ui.cpp))
+- [x] Parser test suite (`test/`) for every API response shape, runnable natively or on-device ([docs/platformio-and-ci.md](docs/platformio-and-ci.md))
+- [ ] Tap-through Hourly-detail and full 7-Day-forecast screens
+- [ ] Severe alert screen
+- [ ] Weather condition icons (currently text-only / a placeholder glyph — see [docs/rendering.md](docs/rendering.md))
 
 ## Building
 
@@ -35,11 +47,25 @@ pio run -e tab5 -t upload    # flash over USB
 pio device monitor           # serial console
 ```
 
+### Testing
+
+The API response parsers (`geocode_parse.h`/`weather_parse.h`/`timezone_parse.h`)
+have a Unity test suite under `test/`, runnable two ways:
+
+```sh
+pio test -e native      # fast, no board needed - filter/field-mapping sanity check
+pio test -e tab5-test   # authoritative - builds and runs on a real Tab5 over USB
+```
+
+See [docs/platformio-and-ci.md](docs/platformio-and-ci.md) for why both exist
+(native's 64-bit host needs different JSON arena sizes than the real 32-bit
+target, so a native pass alone doesn't prove the on-device size is right).
+
 ## Screens
 
 |                            |                                                                                                          |
 |----------------------------|----------------------------------------------------------------------------------------------------------|
-| **Dashboard**              | Current conditions, 8-hour strip, 7-day outlook — the always-on default                                  |
+| **Dashboard**               | Current conditions, 8-hour strip, 7-day outlook — the always-on default                                  |
 | **Hourly detail**          | 16-hour temperature/precipitation chart                                                                  |
 | **7-day forecast**         | Full week, day/night split per row, sunrise/sunset/moon phase                                            |
 | **Boot / sync / offline**  | Wi-Fi connect, first fetch, and a graceful fallback to stale data when the network or API is unreachable |
@@ -58,7 +84,7 @@ Open [docs/mockups/index.html](docs/mockups/index.html) locally, or browse the [
 - [docs/google-weather-api.md](docs/google-weather-api.md) — endpoints, auth, response schema, quota/pricing, location/provisioning flow
 - [docs/rendering.md](docs/rendering.md) — LVGL + M5GFX approach for fast GUI response
 - [docs/platformio-and-ci.md](docs/platformio-and-ci.md) — board config and GitHub Actions build
-- [docs/firmware-architecture.md](docs/firmware-architecture.md) — module boundaries, stack-vs-heap JSON parsing, dual-core task-split proposal
+- [docs/firmware-architecture.md](docs/firmware-architecture.md) — module boundaries, stack-vs-heap JSON parsing, and the implemented dual-core (`uiTask`/`netTask`) task split
 
 ## License
 
