@@ -21,25 +21,29 @@ extern const lv_font_t font_archivo_alpha_40;
 extern const lv_font_t font_archivo_alpha_48;
 extern const lv_font_t font_archivo_alpha_64;
 extern const lv_font_t font_archivo_alpha_80;
+extern const lv_font_t font_archivo_hi_40;
+extern const lv_font_t font_archivo_lo_40;
 
 static constexpr FontGalleryEntry kFontGalleryEntries[] = {
-    {&font_archivo_48, "68°", "Archivo 48px (current LVGL built-in ceiling)"},
-    {&font_archivo_64, "68°", "Archivo 64px"},
-    {&font_archivo_80, "68°", "Archivo 80px"},
-    {&font_archivo_96, "68°", "Archivo 96px"},
-    {&font_archivo_108, "68°", "Archivo 108px (dashboard.html hero size)"},
-    {&font_archivo_128, "68°", "Archivo 128px"},
-    {&font_archivo_160, "68°", "Archivo 160px"},
-    {&font_archivo_192, "68°", "Archivo 192px"},
-    {&font_archivo_256, "68°", "Archivo 256px"},
-    {&font_archivo_384, "68°", "Archivo 384px"},
-    {&font_archivo_512, "68°", "Archivo 512px (taller than the 720px panel)"},
-    {&font_archivo_alpha_28, "↑74° ↓58° · expand >", "Archivo 28px, full Latin"},
-    {&font_archivo_alpha_32, "↑74° ↓58° · expand >", "Archivo 32px, full Latin"},
-    {&font_archivo_alpha_40, "↑74° ↓58° · expand >", "Archivo 40px, full Latin"},
-    {&font_archivo_alpha_48, "↑74° ↓58° · expand >", "Archivo 48px, full Latin"},
-    {&font_archivo_alpha_64, "↑74° ↓58° · expand >", "Archivo 64px, full Latin"},
-    {&font_archivo_alpha_80, "↑74° ↓58° · expand >", "Archivo 80px, full Latin"},
+    {&font_archivo_48, "68°", 0xf0e9d8, "Archivo 48px (current LVGL built-in ceiling)"},
+    {&font_archivo_64, "68°", 0xf0e9d8, "Archivo 64px"},
+    {&font_archivo_80, "68°", 0xf0e9d8, "Archivo 80px"},
+    {&font_archivo_96, "68°", 0xf0e9d8, "Archivo 96px"},
+    {&font_archivo_108, "68°", 0xf0e9d8, "Archivo 108px (dashboard.html hero size)"},
+    {&font_archivo_128, "68°", 0xf0e9d8, "Archivo 128px"},
+    {&font_archivo_160, "68°", 0xf0e9d8, "Archivo 160px"},
+    {&font_archivo_192, "68°", 0xf0e9d8, "Archivo 192px"},
+    {&font_archivo_256, "68°", 0xf0e9d8, "Archivo 256px"},
+    {&font_archivo_384, "68°", 0xf0e9d8, "Archivo 384px"},
+    {&font_archivo_512, "68°", 0xf0e9d8, "Archivo 512px (taller than the 720px panel)"},
+    {&font_archivo_alpha_28, "↑74° ↓58° · expand >", 0xf0e9d8, "Archivo 28px, full Latin"},
+    {&font_archivo_alpha_32, "↑74° ↓58° · expand >", 0xf0e9d8, "Archivo 32px, full Latin"},
+    {&font_archivo_alpha_40, "↑74° ↓58° · expand >", 0xf0e9d8, "Archivo 40px, full Latin"},
+    {&font_archivo_alpha_48, "↑74° ↓58° · expand >", 0xf0e9d8, "Archivo 48px, full Latin"},
+    {&font_archivo_alpha_64, "↑74° ↓58° · expand >", 0xf0e9d8, "Archivo 64px, full Latin"},
+    {&font_archivo_alpha_80, "↑74° ↓58° · expand >", 0xf0e9d8, "Archivo 80px, full Latin"},
+    {&font_archivo_hi_40, "↑74° HIGH", 0xe2794e, "Archivo 40px, --ember (mockup's .hilo .hi color)"},
+    {&font_archivo_lo_40, "↓58° LOW", 0x6fb3ac, "Archivo 40px, --teal (mockup's .hilo .lo color)"},
 
 };
 

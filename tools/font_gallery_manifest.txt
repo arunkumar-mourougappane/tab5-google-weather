@@ -1,6 +1,6 @@
 # Manifest for tools/gen_font_gallery.sh - one font/size to generate per
 # line, pipe-delimited:
-#   lvgl_name|source_font|size_px|symbols|sample|caption
+#   lvgl_name|source_font|size_px|symbols|sample|color_hex|caption
 #
 # lvgl_name   - must be a valid C identifier, unique across the file.
 # source_font - path to a .woff2/.ttf/.otf, relative to the repo root.
@@ -15,25 +15,32 @@
 # sample      - text shown on-device in this entry's font. Must only use
 #               characters included in `symbols`, or LVGL falls back to
 #               its default font (or blank tofu) for whatever's missing.
+# color_hex   - 6 hex digits, no '#' (the gallery emits it as 0xRRGGBB).
+#               Test the mockup's actual palette here
+#               (docs/mockups/assets/style.css's --ink/--brass/--teal/
+#               --ember/etc., dark-theme values since the panel runs
+#               dark) rather than assuming plain white always matches
+#               what an element is really rendered in.
 # caption     - shown on-device under the sample text.
 #
 # Add a line and rerun tools/gen_font_gallery.sh to test another
-# size/family/subset - no code changes needed.
+# size/family/subset/color - no code changes needed.
 
 # Hero-digit ladder (docs/rendering.md's "Open problem": how big does the
 # temperature readout need to be to read from across the room). Digits +
 # degree sign only - narrow on purpose, see the symbols note above.
-font_archivo_48|docs/mockups/assets/fonts/archivo-variable.woff2|48|0123456789°|68°|Archivo 48px (current LVGL built-in ceiling)
-font_archivo_64|docs/mockups/assets/fonts/archivo-variable.woff2|64|0123456789°|68°|Archivo 64px
-font_archivo_80|docs/mockups/assets/fonts/archivo-variable.woff2|80|0123456789°|68°|Archivo 80px
-font_archivo_96|docs/mockups/assets/fonts/archivo-variable.woff2|96|0123456789°|68°|Archivo 96px
-font_archivo_108|docs/mockups/assets/fonts/archivo-variable.woff2|108|0123456789°|68°|Archivo 108px (dashboard.html hero size)
-font_archivo_128|docs/mockups/assets/fonts/archivo-variable.woff2|128|0123456789°|68°|Archivo 128px
-font_archivo_160|docs/mockups/assets/fonts/archivo-variable.woff2|160|0123456789°|68°|Archivo 160px
-font_archivo_192|docs/mockups/assets/fonts/archivo-variable.woff2|192|0123456789°|68°|Archivo 192px
-font_archivo_256|docs/mockups/assets/fonts/archivo-variable.woff2|256|0123456789°|68°|Archivo 256px
-font_archivo_384|docs/mockups/assets/fonts/archivo-variable.woff2|384|0123456789°|68°|Archivo 384px
-font_archivo_512|docs/mockups/assets/fonts/archivo-variable.woff2|512|0123456789°|68°|Archivo 512px (taller than the 720px panel)
+# Color: --ink (f0e9d8, dark theme) - the mockup's ".now .temp" color.
+font_archivo_48|docs/mockups/assets/fonts/archivo-variable.woff2|48|0123456789°|68°|f0e9d8|Archivo 48px (current LVGL built-in ceiling)
+font_archivo_64|docs/mockups/assets/fonts/archivo-variable.woff2|64|0123456789°|68°|f0e9d8|Archivo 64px
+font_archivo_80|docs/mockups/assets/fonts/archivo-variable.woff2|80|0123456789°|68°|f0e9d8|Archivo 80px
+font_archivo_96|docs/mockups/assets/fonts/archivo-variable.woff2|96|0123456789°|68°|f0e9d8|Archivo 96px
+font_archivo_108|docs/mockups/assets/fonts/archivo-variable.woff2|108|0123456789°|68°|f0e9d8|Archivo 108px (dashboard.html hero size)
+font_archivo_128|docs/mockups/assets/fonts/archivo-variable.woff2|128|0123456789°|68°|f0e9d8|Archivo 128px
+font_archivo_160|docs/mockups/assets/fonts/archivo-variable.woff2|160|0123456789°|68°|f0e9d8|Archivo 160px
+font_archivo_192|docs/mockups/assets/fonts/archivo-variable.woff2|192|0123456789°|68°|f0e9d8|Archivo 192px
+font_archivo_256|docs/mockups/assets/fonts/archivo-variable.woff2|256|0123456789°|68°|f0e9d8|Archivo 256px
+font_archivo_384|docs/mockups/assets/fonts/archivo-variable.woff2|384|0123456789°|68°|f0e9d8|Archivo 384px
+font_archivo_512|docs/mockups/assets/fonts/archivo-variable.woff2|512|0123456789°|68°|f0e9d8|Archivo 512px (taller than the 720px panel)
 
 # Full-Latin alphabet ladder, for label text (city name, condition,
 # day-of-week, etc.) rather than the hero number. Uppercase+lowercase+
@@ -53,9 +60,21 @@ font_archivo_512|docs/mockups/assets/fonts/archivo-variable.woff2|512|0123456789
 # Sizes bracket the dashboard mockup's label range (~10-25px at desktop
 # ~100 PPI) scaled up for this panel's ~294 PPI (see docs/rendering.md's
 # "moved every screen up a tier" precedent, roughly a 2.7-3x factor).
-font_archivo_alpha_28|docs/mockups/assets/fonts/archivo-variable.woff2|28|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 28px, full Latin
-font_archivo_alpha_32|docs/mockups/assets/fonts/archivo-variable.woff2|32|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 32px, full Latin
-font_archivo_alpha_40|docs/mockups/assets/fonts/archivo-variable.woff2|40|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 40px, full Latin
-font_archivo_alpha_48|docs/mockups/assets/fonts/archivo-variable.woff2|48|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 48px, full Latin
-font_archivo_alpha_64|docs/mockups/assets/fonts/archivo-variable.woff2|64|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 64px, full Latin
-font_archivo_alpha_80|docs/mockups/assets/fonts/archivo-variable.woff2|80|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|Archivo 80px, full Latin
+# Color: --ink (f0e9d8, dark theme) - general label text's color in the
+# mockup (city name, condition, day names). The mockup actually colors
+# the hi/lo halves of this sample differently (--ember/--teal) and this
+# harness can't split one label into two colors - if that distinction
+# matters, test it as two separate manifest lines instead.
+font_archivo_alpha_28|docs/mockups/assets/fonts/archivo-variable.woff2|28|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|f0e9d8|Archivo 28px, full Latin
+font_archivo_alpha_32|docs/mockups/assets/fonts/archivo-variable.woff2|32|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|f0e9d8|Archivo 32px, full Latin
+font_archivo_alpha_40|docs/mockups/assets/fonts/archivo-variable.woff2|40|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|f0e9d8|Archivo 40px, full Latin
+font_archivo_alpha_48|docs/mockups/assets/fonts/archivo-variable.woff2|48|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|f0e9d8|Archivo 48px, full Latin
+font_archivo_alpha_64|docs/mockups/assets/fonts/archivo-variable.woff2|64|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|f0e9d8|Archivo 64px, full Latin
+font_archivo_alpha_80|docs/mockups/assets/fonts/archivo-variable.woff2|80|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓|↑74° ↓58° · expand >|f0e9d8|Archivo 80px, full Latin
+
+# Hi/lo color check at the size actually used in the mockup's .hilo row
+# (13.5px desktop -> ~40px on-panel, matching the alpha_40 step above):
+# --ember for the high reading, --teal for the low, split into two
+# entries since one label can't hold two colors (see note above).
+font_archivo_hi_40|docs/mockups/assets/fonts/archivo-variable.woff2|40|0123456789° ↑HIGH|↑74° HIGH|e2794e|Archivo 40px, --ember (mockup's .hilo .hi color)
+font_archivo_lo_40|docs/mockups/assets/fonts/archivo-variable.woff2|40|0123456789° ↓LOW|↓58° LOW|6fb3ac|Archivo 40px, --teal (mockup's .hilo .lo color)

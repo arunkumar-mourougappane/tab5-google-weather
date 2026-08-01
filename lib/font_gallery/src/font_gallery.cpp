@@ -14,6 +14,7 @@ lv_obj_t *g_captionLabel = nullptr;
 void showCurrent() {
   const FontGalleryEntry &entry = g_entries[g_index];
   lv_obj_set_style_text_font(g_bigLabel, entry.font, 0);
+  lv_obj_set_style_text_color(g_bigLabel, lv_color_hex(entry.color), 0);
   lv_label_set_text(g_bigLabel, entry.sample);
 
   char caption[128];
@@ -41,7 +42,6 @@ void fontGalleryBegin(const FontGalleryEntry *entries, size_t count) {
   lv_obj_add_event_cb(screen, onScreenClicked, LV_EVENT_CLICKED, nullptr);
 
   g_bigLabel = lv_label_create(screen);
-  lv_obj_set_style_text_color(g_bigLabel, lv_color_hex(0xf5f0e8), 0);
   lv_obj_set_style_text_align(g_bigLabel, LV_TEXT_ALIGN_CENTER, 0);
   // Digit-only hero samples never came close to this width, but a
   // full-alphabet label sample at a large size easily could - wrap

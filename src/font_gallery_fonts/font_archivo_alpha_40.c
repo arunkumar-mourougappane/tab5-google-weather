@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 40 px
  * Bpp: 4
- * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/font_gallery_ttf_cache.pe1dB6E9WY/docs_mockups_assets_fonts_archivo-variable_woff2.ttf --size 40 --bpp 4 --format lvgl --symbols ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓ --no-compress --lv-font-name font_archivo_alpha_40 -o src/font_gallery_fonts/font_archivo_alpha_40.c
+ * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/font_gallery_ttf_cache.IRIu6n0ivc/docs_mockups_assets_fonts_archivo-variable_woff2.ttf --size 40 --bpp 4 --format lvgl --symbols ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 °·-.:%/,>↑↓ --no-compress --lv-font-name font_archivo_alpha_40 -o src/font_gallery_fonts/font_archivo_alpha_40.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

@@ -39,6 +39,7 @@
 #include <lvgl.h>
 
 #include <cstddef>
+#include <cstdint>
 
 struct FontGalleryEntry {
   const lv_font_t *font;
@@ -46,6 +47,11 @@ struct FontGalleryEntry {
   // different glyph subsets (a digit-only hero font vs. a full-Latin
   // label font), so there's no one sample string valid for all of them.
   const char *sample;
+  // 0xRRGGBB, passed to lv_color_hex(). Also per-entry rather than
+  // gallery-wide - lets a manifest test a font in the actual mockup
+  // palette color it'd be used in (docs/mockups/assets/style.css's
+  // --brass/--teal/--ember/etc.), not just white-on-dark.
+  uint32_t color;
   const char *caption;
 };
 
