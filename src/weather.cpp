@@ -7,23 +7,15 @@
 #include "http_json_client.h"
 #include "json_arena_allocator.h"
 #include "logging.h"
+#include "weather_parse.h"
 
 namespace {
 
 constexpr const char *kHost = "https://weather.googleapis.com";
 
-// Sized against real bytesUsed() numbers logged on hardware (see the
-// Serial output each fetch* call below) rather than assumed — see
-// docs/firmware-architecture.md's "Memory" section for the reasoning
-// behind using a stack arena here at all instead of the default
-// heap-backed JsonDocument. (JsonDocument::memoryUsage() would be the
-// obvious way to get this, but it's deprecated in this ArduinoJson version
-// and unconditionally returns 0 — see json_arena_allocator.h.)
-constexpr size_t kJsonArenaBytes = 6144;
-
 void logArenaUsage(const char *label, size_t bytesUsed, bool arenaOverflowed) {
   LOG_D("weather", "%s JSON arena: %u bytes used of %u, overflowed=%d\n", label, static_cast<unsigned>(bytesUsed),
-        static_cast<unsigned>(kJsonArenaBytes), arenaOverflowed);
+        static_cast<unsigned>(kWeatherJsonArenaBytes), arenaOverflowed);
 }
 
 // Weather API errors follow Google Cloud's standard error envelope —
@@ -175,15 +167,6 @@ WeatherCondition parseCondition(JsonVariantConst v) {
   return c;
 }
 
-// Marks the subset of a weatherCondition object this project actually
-// reads (see parseCondition() above) — used to build each endpoint's
-// parse filter below.
-void filterWeatherCondition(JsonObject condition) {
-  condition["type"] = true;
-  condition["description"]["text"] = true;
-  condition["iconBaseUri"] = true;
-}
-
 void appendDailyPoints(JsonArrayConst days, DailyForecastPoint out[kMaxDailyPoints], size_t &outCount) {
   for (JsonVariantConst day : days) {
     if (outCount >= kMaxDailyPoints) {
@@ -210,27 +193,19 @@ bool fetchCurrentConditions(const String &apiKey, float lat, float lon, bool uni
   String url = String(kHost) + "/v1/currentConditions:lookup?key=" + apiKey + "&location.latitude=" +
                String(lat, 6) + "&location.longitude=" + String(lon, 6) + "&unitsSystem=" + unitsParam(unitsImperial);
 
-  // See http_json_client.h: the API returns far more fields per response
-  // than this function reads (dewPoint, heatIndex, airPressure, ... —
-  // confirmed on hardware), and the DOM parser stores all of them by
-  // default. Filtering to just what's read below keeps the parsed
-  // document small enough for the stack arena regardless of how many
-  // extra fields Google's response happens to include.
+  // buildCurrentConditionsFilter() (weather_parse.h): the API returns far
+  // more fields per response than this function reads (dewPoint,
+  // heatIndex, airPressure, ... — confirmed on hardware), and the DOM
+  // parser stores all of them by default. Filtering to just what's read
+  // below keeps the parsed document small enough for the stack arena
+  // regardless of how many extra fields Google's response happens to
+  // include. Shared with test/test_weather/ so a test parsing a real
+  // captured response exercises the exact filter and arena size
+  // production uses.
   JsonDocument filter;
-  filter["currentTime"] = true;
-  filter["isDaytime"] = true;
-  filterWeatherCondition(filter["weatherCondition"].to<JsonObject>());
-  filter["temperature"]["degrees"] = true;
-  filter["feelsLikeTemperature"]["degrees"] = true;
-  filter["relativeHumidity"] = true;
-  filter["uvIndex"] = true;
-  filter["precipitation"]["probability"]["percent"] = true;
-  filter["wind"]["speed"]["value"] = true;
-  filter["wind"]["direction"]["cardinal"] = true;
-  filter["wind"]["gust"]["value"] = true;
-  filter["cloudCover"] = true;
+  buildCurrentConditionsFilter(filter);
 
-  StackJsonDocument<kJsonArenaBytes> stackDoc;
+  StackJsonDocument<kWeatherJsonArenaBytes> stackDoc;
   JsonDocument &doc = stackDoc.doc();
   if (!getJson(url, doc, outError, outRetryable, &filter)) {
     return false;
@@ -265,18 +240,11 @@ bool fetchHourlyForecast(const String &apiKey, float lat, float lon, bool unitsI
                "&unitsSystem=" + unitsParam(unitsImperial) + "&hours=" + String(kMaxHourlyPoints) +
                "&pageSize=" + String(kMaxHourlyPoints);
 
-  // See fetchCurrentConditions()'s filter comment — the same DOM-parses-
-  // everything issue is worse per-record here (~20 fields/hour in the raw
-  // response vs. the handful read below), and 8 records made it overflow
-  // the arena on real hardware before this filter was added.
+  // buildHourlyForecastFilter() (weather_parse.h) - see its comment.
   JsonDocument filter;
-  JsonObject hour = filter["forecastHours"][0].to<JsonObject>();
-  hour["displayDateTime"]["hours"] = true;
-  filterWeatherCondition(hour["weatherCondition"].to<JsonObject>());
-  hour["temperature"]["degrees"] = true;
-  hour["precipitation"]["probability"]["percent"] = true;
+  buildHourlyForecastFilter(filter);
 
-  StackJsonDocument<kJsonArenaBytes> stackDoc;
+  StackJsonDocument<kWeatherJsonArenaBytes> stackDoc;
   JsonDocument &doc = stackDoc.doc();
   if (!getJson(url, doc, outError, outRetryable, &filter)) {
     return false;
@@ -321,20 +289,9 @@ bool fetchDailyForecast(const String &apiKey, float lat, float lon, bool unitsIm
                           String(lat, 6) + "&location.longitude=" + String(lon, 6) +
                           "&unitsSystem=" + unitsParam(unitsImperial) + "&days=" + String(kMaxDailyPoints);
 
-  // See fetchCurrentConditions()'s filter comment — the daily forecast's
-  // day+night split and sun/moon events make its per-record field count
-  // the largest of the three endpoints; filtering matters here even more
-  // than for hourly.
+  // buildDailyForecastFilter() (weather_parse.h) - see its comment.
   JsonDocument filter;
-  filter["nextPageToken"] = true;
-  JsonObject day = filter["forecastDays"][0].to<JsonObject>();
-  day["displayDate"]["year"] = true;
-  day["displayDate"]["month"] = true;
-  day["displayDate"]["day"] = true;
-  filterWeatherCondition(day["daytimeForecast"]["weatherCondition"].to<JsonObject>());
-  day["maxTemperature"]["degrees"] = true;
-  day["minTemperature"]["degrees"] = true;
-  day["daytimeForecast"]["precipitation"]["probability"]["percent"] = true;
+  buildDailyForecastFilter(filter);
 
   // page-1's JsonDocument/body String are scoped to this block so they're
   // freed before page 2's request, not held alive across it. Once, on real
@@ -350,7 +307,7 @@ bool fetchDailyForecast(const String &apiKey, float lat, float lon, bool unitsIm
   // even exists, not just "freed" in a heap sense.
   String pageToken;
   {
-    StackJsonDocument<kJsonArenaBytes> stackDoc;
+    StackJsonDocument<kWeatherJsonArenaBytes> stackDoc;
     JsonDocument &doc = stackDoc.doc();
     if (!getJson(baseUrl + "&pageSize=" + String(kFirstPageDays), doc, outError, outRetryable, &filter)) {
       return false;
@@ -363,7 +320,7 @@ bool fetchDailyForecast(const String &apiKey, float lat, float lon, bool unitsIm
   if (pageToken.length() > 0 && outCount < kMaxDailyPoints) {
     delay(500);  // beat between the two calls, same idea as settleWifiLink() in main.cpp
 
-    StackJsonDocument<kJsonArenaBytes> stackDoc2;
+    StackJsonDocument<kWeatherJsonArenaBytes> stackDoc2;
     JsonDocument &doc2 = stackDoc2.doc();
     String secondError;
     bool secondRetryable = true;

@@ -6,15 +6,14 @@
 // the P4's two cores (docs/firmware-architecture.md's "Concurrency"
 // section): uiTask (core 0) owns LVGL/touch and never blocks on network
 // I/O; netTask (core 1) joins the saved Wi-Fi, geocodes the saved location
-// once if needed (docs/google-weather-api.md), and fetches current
-// conditions (src/weather.cpp) — free to block, since it's off the render
-// path. The two hand off boot-status text via SharedState.
-// [Real dashboard layout/hourly+daily strips not built yet — this is just
-// current conditions on the same status-screen chrome, to prove the
-// weather client end-to-end.]
+// once if needed (docs/google-weather-api.md), then loops fetching current
+// conditions/hourly/daily (src/weather.cpp) on a refresh timer — free to
+// block, since it's off the render path. The two hand off boot-status text
+// and dashboard data via SharedState.
 //
 // This file is orchestration only — display/LVGL plumbing lives in
-// display.{h,cpp}, boot-time screen rendering in boot_ui.{h,cpp}. See
+// display.{h,cpp}, boot-time screen rendering in boot_ui.{h,cpp}, the
+// dashboard itself in dashboard_ui.{h,cpp}. See
 // docs/firmware-architecture.md for the reasoning behind that split.
 
 #include <M5Unified.h>
@@ -25,11 +24,13 @@
 
 #include "boot_ui.h"
 #include "config_store.h"
+#include "dashboard_ui.h"
 #include "display.h"
 #include "geocode.h"
 #include "logging.h"
 #include "provisioning.h"
 #include "shared_state.h"
+#include "timezone_lookup.h"
 #include "weather.h"
 
 namespace {
@@ -149,7 +150,15 @@ void logWifiState() {
 }
 
 void resolveLocationIfNeeded() {
-  if (configStore.hasLocation()) {
+  // hasLocation() alone isn't enough to skip: a device provisioned before
+  // city()/state() existed has lat/lon cached in NVS but no city/state
+  // (ConfigStore::begin() reads those keys as "" since they were never
+  // written). Re-geocoding once backfills both - after that they're
+  // cached in NVS same as lat/lon, and this returns immediately every
+  // boot like before. Checking city OR state (not just city) covers the
+  // rare real address that only has one of the two; checking neither
+  // would mean re-geocoding every boot forever for it instead of once.
+  if (configStore.hasLocation() && (configStore.city().length() > 0 || configStore.state().length() > 0)) {
     return;
   }
 
@@ -168,6 +177,8 @@ void resolveLocationIfNeeded() {
   // second first.
   float lat = 0.0f;
   float lon = 0.0f;
+  String city;
+  String state;
   String error;
   bool retryable = true;
   bool resolved = false;
@@ -175,16 +186,69 @@ void resolveLocationIfNeeded() {
     if (attempt > 0) {
       delay(500);
     }
-    resolved = geocodeLocation(configStore.locationQuery(), configStore.apiKey(), lat, lon, error, retryable);
+    resolved =
+        geocodeLocation(configStore.locationQuery(), configStore.apiKey(), lat, lon, city, state, error, retryable);
   }
 
   if (resolved) {
-    configStore.saveLocation(lat, lon);
+    configStore.saveLocation(lat, lon, city, state);
     return;
   }
 
   sharedState.publishStatus("Could not resolve that location", error, /*loading=*/false);
   delay(4000);
+}
+
+// Prefers the resolved "City, ST" (from geocodeLocation()'s
+// address_components, saved once by resolveLocationIfNeeded()) over the
+// raw text the user typed at setup, which might just be a ZIP code - city
+// alone (no state) still beats that; state alone without a city isn't
+// useful on its own, so that case falls back to the raw query too. Only
+// meaningful after resolveLocationIfNeeded() has succeeded (callers
+// already gate on configStore.hasLocation() before reaching here).
+String resolvedDisplayLocation() {
+  if (configStore.city().length() > 0) {
+    String display = configStore.city();
+    if (configStore.state().length() > 0) {
+      display += ", " + configStore.state();
+    }
+    return display;
+  }
+  return configStore.locationQuery();
+}
+
+// Resolves once (same caching pattern as resolveLocationIfNeeded() - and
+// depends on it having already succeeded, since it needs lat/lon), not
+// re-resolved on every refresh. Not fatal on failure: the dashboard just
+// shows UTC (SharedState::DashboardSnapshot::utcOffsetSec defaults to 0)
+// until this succeeds on a later boot - unlike a bad location, a bad
+// timezone lookup shouldn't block showing weather at all, so this
+// doesn't publish a status-screen error the way resolveLocationIfNeeded()
+// does.
+void resolveTimezoneIfNeeded() {
+  if (configStore.hasTimezone()) {
+    return;
+  }
+
+  int32_t rawOffsetSec = 0;
+  int32_t dstOffsetSec = 0;
+  String timeZoneId;
+  String error;
+  bool retryable = true;
+  bool resolved = false;
+  for (int attempt = 0; attempt < 3 && !resolved && retryable; attempt++) {
+    if (attempt > 0) {
+      delay(500);
+    }
+    resolved = resolveTimezone(configStore.apiKey(), configStore.latitude(), configStore.longitude(), time(nullptr),
+                                rawOffsetSec, dstOffsetSec, timeZoneId, error, retryable);
+  }
+
+  if (resolved) {
+    configStore.saveTimezone(rawOffsetSec, dstOffsetSec);
+  } else {
+    LOG_W("net", "timezone resolution failed: %s (dashboard clock will show UTC)\n", error.c_str());
+  }
 }
 
 // Gives the esp-hosted SDIO link (ESP32-P4 <-> C6 co-processor, see
@@ -218,19 +282,23 @@ void settleWifiLink() {
   delay(kWifiSettleMs);
 }
 
-// No dashboard UI yet (see docs/rendering.md's "Open problem" section on
-// hero-scale fonts) — this just proves the weather.googleapis.com client
-// (src/weather.cpp) end-to-end on real hardware by fetching current
-// conditions once and showing them on the same status-screen chrome used
-// for every other boot state. Same single-shot-with-limited-retry shape as
-// resolveLocationIfNeeded(): only retries when fetchCurrentConditions()
-// itself says the failure was transient.
-void fetchAndShowCurrentConditions() {
+// How often netTask refetches once the dashboard is up. 10 min matches
+// docs/google-weather-api.md's explicit recommendation ("far more
+// frequent than the underlying forecast data changes", ~13k calls/month
+// combined across all three endpoints, comfortably inside the free
+// tier's 10k calls/SKU/month).
+constexpr uint32_t kRefreshIntervalMs = 10 * 60 * 1000;
+
+// Fetches current conditions, hourly, and daily in one pass. Returns true
+// (and fills `out`) only if current conditions succeeded — hourly/daily
+// failures are logged but don't block showing at least the current
+// reading, since a dashboard with a working "now" card and an empty
+// hourly/daily section is still far more useful than reverting to the
+// status screen. Same single-shot-with-limited-retry shape already used
+// by resolveLocationIfNeeded() for each of the three calls.
+bool fetchDashboardSnapshot(SharedState::DashboardSnapshot &out) {
   settleWifiLink();
 
-  sharedState.publishStatus("Getting weather", configStore.locationQuery(), /*loading=*/true);
-
-  CurrentConditions conditions;
   String error;
   bool retryable = true;
   bool fetched = false;
@@ -239,64 +307,42 @@ void fetchAndShowCurrentConditions() {
       delay(500);
     }
     fetched = fetchCurrentConditions(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
-                                      configStore.unitsImperial(), conditions, error, retryable);
+                                      configStore.unitsImperial(), out.current, error, retryable);
   }
-
   if (!fetched) {
-    sharedState.publishStatus("Could not get weather", error, /*loading=*/false);
-    return;
+    LOG_E("net", "current conditions failed: %s\n", error.c_str());
+    return false;
   }
 
-  const char *unitSuffix = configStore.unitsImperial() ? "F" : "C";
-  char subtitle[192];
-  snprintf(subtitle, sizeof(subtitle), "%s\nFeels like %d%s - humidity %d%%",
-           conditions.condition.description.c_str(), static_cast<int>(conditions.feelsLikeTemperature),
-           unitSuffix, conditions.relativeHumidity);
-
-  char title[32];
-  snprintf(title, sizeof(title), "%d%s", static_cast<int>(conditions.temperature), unitSuffix);
-  sharedState.publishStatus(title, subtitle, /*loading=*/false);
-}
-
-// Temporary: no hourly/daily UI exists yet (no dashboard yet at all — see
-// fetchAndShowCurrentConditions() above), so this just exercises
-// fetchHourlyForecast()/fetchDailyForecast() once at boot and logs what
-// came back, to confirm the same getJson() chunked-response fix that fixed
-// current conditions also covers these two endpoints on real hardware.
-// Remove once the real dashboard consumes these instead of Serial.
-void fetchAndLogForecasts() {
   settleWifiLink();
-
-  HourlyForecastPoint hourly[kMaxHourlyPoints];
-  size_t hourlyCount = 0;
   String hourlyError;
   bool hourlyRetryable = true;
-  if (fetchHourlyForecast(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
-                           configStore.unitsImperial(), hourly, hourlyCount, hourlyError, hourlyRetryable)) {
-    for (size_t i = 0; i < hourlyCount; i++) {
-      LOG_D("net", "hourly[%u]: %s %d %s\n", static_cast<unsigned>(i), hourly[i].displayDateTime.c_str(),
-            static_cast<int>(hourly[i].temperature), hourly[i].condition.type.c_str());
-    }
-  } else {
+  if (!fetchHourlyForecast(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
+                            configStore.unitsImperial(), out.hourly, out.hourlyCount, hourlyError,
+                            hourlyRetryable)) {
     LOG_E("net", "hourly forecast failed: %s\n", hourlyError.c_str());
   }
 
   settleWifiLink();
-
-  DailyForecastPoint daily[kMaxDailyPoints];
-  size_t dailyCount = 0;
   String dailyError;
   bool dailyRetryable = true;
-  if (fetchDailyForecast(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
-                          configStore.unitsImperial(), daily, dailyCount, dailyError, dailyRetryable)) {
-    for (size_t i = 0; i < dailyCount; i++) {
-      LOG_D("net", "daily[%u]: %s %d/%d %s\n", static_cast<unsigned>(i), daily[i].displayDate.c_str(),
-            static_cast<int>(daily[i].maxTemperature), static_cast<int>(daily[i].minTemperature),
-            daily[i].daytimeCondition.type.c_str());
-    }
-  } else {
+  if (!fetchDailyForecast(configStore.apiKey(), configStore.latitude(), configStore.longitude(),
+                           configStore.unitsImperial(), out.daily, out.dailyCount, dailyError, dailyRetryable)) {
     LOG_E("net", "daily forecast failed: %s\n", dailyError.c_str());
   }
+
+  out.syncedAtUnix = time(nullptr);
+  out.displayLocation = resolvedDisplayLocation();
+  out.unitsImperial = configStore.unitsImperial();
+  // Defaults to 0 (UTC) via ConfigStore's own defaults if
+  // resolveTimezoneIfNeeded() hasn't succeeded yet - see
+  // dashboard_ui.cpp's refreshDashboardClock(), which just adds this to
+  // the current UTC epoch rather than touching the system TZ/NTP config.
+  out.utcOffsetSec = configStore.timezoneRawOffsetSec() + configStore.timezoneDstOffsetSec();
+
+  LOG_I("net", "dashboard snapshot: %d%s, %u hourly, %u daily\n", static_cast<int>(out.current.temperature),
+        out.unitsImperial ? "F" : "C", static_cast<unsigned>(out.hourlyCount), static_cast<unsigned>(out.dailyCount));
+  return true;
 }
 
 void netTaskFn(void *) {
@@ -327,15 +373,33 @@ void netTaskFn(void *) {
     vTaskDelete(nullptr);
   }
 
-  fetchAndShowCurrentConditions();
-  fetchAndLogForecasts();
+  // Depends on lat/lon from resolveLocationIfNeeded() above, so must run
+  // after it. Not a hard requirement like location - see
+  // resolveTimezoneIfNeeded()'s own comment.
+  resolveTimezoneIfNeeded();
 
-  // One-shot for now — no dashboard exists yet to periodically refresh
-  // (see docs/firmware-architecture.md's concurrency section: a refresh
-  // loop belongs with the dashboard work, not bolted on here first).
-  // Nothing left for this task to do; matches today's behavior, where the
-  // old single-task loop() never refetched either.
-  vTaskDelete(nullptr);
+  // resolvedDisplayLocation() (not locationQuery()): by this point
+  // resolveLocationIfNeeded() has already succeeded (guaranteed by the
+  // hasLocation() check above), so the resolved "City, ST" is already
+  // known - no reason to show the raw ZIP/text the user typed here just
+  // because it's earlier in boot than the dashboard itself.
+  sharedState.publishStatus("Getting weather", resolvedDisplayLocation(), /*loading=*/true);
+
+  // Ongoing refresh loop, not one-shot: this is the dashboard's actual
+  // data source now, not just a boot-time proof of the weather client.
+  // On failure, log and leave whatever's already on screen (the status
+  // screen on the very first attempt, or the last good dashboard on any
+  // later one) rather than overwriting it with an error — a transient
+  // failure at a 10-minute cadence shouldn't be alarming (see
+  // docs/google-weather-api.md). Richer offline/stale-data UX is
+  // docs/mockups/status.html, a later phase.
+  for (;;) {
+    SharedState::DashboardSnapshot snapshot;
+    if (fetchDashboardSnapshot(snapshot)) {
+      sharedState.publishDashboard(snapshot);
+    }
+    delay(kRefreshIntervalMs);
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -346,6 +410,13 @@ void netTaskFn(void *) {
 
 void uiTaskFn(void *) {
   logHeapStats("uiTaskFn start");
+  // Set once the dashboard has been shown at least once, so the clock/
+  // sync-age labels can keep ticking every loop without waiting on a new
+  // fetch — cheap (two label-text-set calls), unlike showDashboardScreen()
+  // itself which is only worth calling when the data actually changed.
+  bool dashboardShown = false;
+  SharedState::DashboardSnapshot lastDashboard;
+
   for (;;) {
     M5.update();
     pumpLvgl();
@@ -353,6 +424,13 @@ void uiTaskFn(void *) {
     SharedState::Status status;
     if (sharedState.tryConsumeStatus(status)) {
       showStatusScreen(status.title.c_str(), status.subtitle.c_str(), status.loading);
+    }
+
+    if (sharedState.tryConsumeDashboard(lastDashboard)) {
+      showDashboardScreen(lastDashboard);
+      dashboardShown = true;
+    } else if (dashboardShown) {
+      refreshDashboardClock(lastDashboard);
     }
 
     delay(5);

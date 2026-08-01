@@ -1,0 +1,91 @@
+# Manifest for tools/gen_dashboard_fonts.sh - production fonts for the
+# on-device Dashboard screen (src/dashboard_ui.cpp), one line per font,
+# pipe-delimited:
+#   lvgl_name|source_font|size_px|symbols|compress
+#
+# lvgl_name   - must be a valid C identifier, unique across the file.
+# source_font - path to a .woff2/.ttf/.otf, relative to the repo root.
+#               .woff2 sources are cached and converted to .ttf once per
+#               distinct path, even if reused across multiple lines.
+# size_px     - passed straight to lv_font_conv --size.
+# symbols     - passed straight to lv_font_conv --symbols. Narrow subsets
+#               only - this is production flash, not a test harness.
+# compress    - 1 or 0. Only the two largest/least-frequently-redrawn
+#               fonts (hero temp, deg suffix) use LVGL's RLE compression
+#               (LV_USE_FONT_COMPRESSED, enabled in include/lv_conf.h) -
+#               see docs/rendering.md's guidance that compression is only
+#               worth its ~30% render-time cost on large, rare redraws.
+#               Every other font stays uncompressed for faster redraws.
+#
+# One font per exact (size, family, weight) combination actually used in
+# docs/mockups/dashboard.html's inline <style> - not a consolidated type
+# scale - so two elements that happen to share a pixel size but differ in
+# font-weight (e.g. ".hour .temp" at weight 500 vs ".statusbar .right"'s
+# default weight 400, both 12.5px) are still two separate generated fonts
+# here, not merged.
+#
+# Sizes are the mockup's OWN px values, unscaled. Correction from an
+# earlier version of this manifest: that version multiplied every size by
+# ~2.9x on the theory that the panel's ~294 PPI density (vs. a ~100 PPI
+# desktop reference) needed compensating for - wrong here, because
+# dashboard.html's `.device` frame is already built at exactly 1280x720,
+# the panel's own native resolution, not a desktop-scale preview of it.
+# Its CSS px are already real device px by construction. Confirmed on
+# hardware: the 2.9x version made the whole layout badly overflow its
+# 720px height (hero digit alone at 312px, ~4x the panel's own
+# `LV_FONT_DEFAULT` of 20px). The ~2.9x precedent in docs/rendering.md
+# legitimately applies to the *status/provisioning* screens (their sizes
+# were picked freehand, never grounded in a 1280x720-accurate mockup),
+# not to this one. Round fractional mockup sizes (13.5, 12.5, 11.5, 10.5,
+# 9.5) up to the nearest integer px - lv_font_conv wants an int --size.
+#
+# Weight picked from each CSS rule's actual `font-weight` (falling back
+# to the browser default, 400, where unspecified) - see
+# docs/mockups/dashboard.html's inline <style> for the source of truth if
+# these ever need re-deriving.
+#
+# Archivo entries use the variable font's default instance as-is (no
+# hand-picked weight axis value) - same simplification already used by
+# tools/font_gallery_manifest.txt, not a regression introduced here.
+
+# --- IBM Plex Mono, weight 500 (font-weight:500 in the mockup CSS) ---
+font_plexmono_hero_108|docs/mockups/assets/fonts/plexmono-500.woff2|108|0123456789°|1
+font_plexmono_deg_44|docs/mockups/assets/fonts/plexmono-500.woff2|44|°FC|1
+font_plexmono_clock_20|docs/mockups/assets/fonts/plexmono-500.woff2|20|0123456789:|0
+# 26px, not the mockup's 17px - the metrics grid moved from 1x4 to 2x2
+# (more room per cell) and got sized up to match, per hardware review.
+font_plexmono_metricvalue_26|docs/mockups/assets/fonts/plexmono-500.woff2|26|0123456789.|0
+font_plexmono_hourtemp_13|docs/mockups/assets/fonts/plexmono-500.woff2|13|0123456789°|0
+
+# --- IBM Plex Mono, weight 400 (default - no font-weight set in CSS) ---
+font_plexmono_hilo_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|0123456789°↑↓HIGLOW/ |0
+font_plexmono_feels_13|docs/mockups/assets/fonts/plexmono-400.woff2|13|ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789°· :|0
+font_plexmono_statusright_13|docs/mockups/assets/fonts/plexmono-400.woff2|13|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 |0
+font_plexmono_dayrange_12|docs/mockups/assets/fonts/plexmono-400.woff2|12|0123456789°|0
+# 20px, not the mockup's 11.5px - matches font_archivo_statusname_20 so
+# the whole statusbar name/region line reads at one consistent size, per
+# hardware review.
+font_plexmono_region_20|docs/mockups/assets/fonts/plexmono-400.woff2|20|ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ·|0
+# Day-row .pop still uses this one (unchanged, 11px) - was originally
+# shared with the metric grid's span text since both matched the
+# mockup's 11px .metric .value span / .day-row .pop size, but the
+# metrics grid getting bigger (see font_plexmono_metricvalue_26's note)
+# shouldn't also resize the unrelated daily-forecast pop% column, so
+# that got split into its own font below instead of staying shared.
+font_plexmono_dailypop_11|docs/mockups/assets/fonts/plexmono-400.woff2|11|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789% |0
+# 14px, not the mockup's 11px - matches the metrics grid's 2x2 resize.
+font_plexmono_metricspan_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789% |0
+font_plexmono_title_11|docs/mockups/assets/fonts/plexmono-400.woff2|11|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ·./-|0
+# 12px, not the mockup's 10px - matches the metrics grid's 2x2 resize.
+font_plexmono_metriclabel_12|docs/mockups/assets/fonts/plexmono-400.woff2|12|ABCDEFGHIJKLMNOPQRSTUVWXYZ |0
+font_plexmono_hourpop_10|docs/mockups/assets/fonts/plexmono-400.woff2|10|0123456789%|0
+
+# --- Archivo (variable font, default instance) ---
+# Condition text and location name are API/user-driven strings (not a
+# fixed vocabulary), so these get a full Latin subset + common name
+# punctuation rather than the narrow subsets above.
+font_archivo_condition_19|docs/mockups/assets/fonts/archivo-variable.woff2|19|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz /-|0
+# 20px, not the mockup's 17px - a deliberate bump (bigger, easier to read
+# as the screen's de facto title) per hardware review, not an oversight.
+font_archivo_statusname_20|docs/mockups/assets/fonts/archivo-variable.woff2|20|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ',.-|0
+font_archivo_dayname_14|docs/mockups/assets/fonts/archivo-variable.woff2|14|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-|0

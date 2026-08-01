@@ -8,7 +8,15 @@
 
 #include <Arduino.h>
 
-// Returns true and fills outLat/outLon on success.
+// Returns true and fills outLat/outLon on success. Also fills
+// outCity/outState from the response's `address_components` (types
+// "locality" and "administrative_area_level_1" respectively; outState is
+// the short form, e.g. "WA") - best-effort, for showing a real place name
+// on the dashboard instead of the raw query text the user typed (which
+// might just be a ZIP code). Left empty, not an error, if Google's
+// response doesn't include one of those component types (happens for
+// some rural/ambiguous queries) - callers should fall back to the raw
+// query text in that case.
 //
 // On failure, fills outError with a human-readable reason — including
 // Google's own `status` field (OK, ZERO_RESULTS, OVER_QUERY_LIMIT,
@@ -18,5 +26,5 @@
 // outRetryable with whether trying again is worth it: true for transient
 // failures (network errors, UNKNOWN_ERROR), false for ones that won't
 // change without the user fixing something (bad key, bad query, quota).
-bool geocodeLocation(const String &query, const String &apiKey, float &outLat, float &outLon,
-                      String &outError, bool &outRetryable);
+bool geocodeLocation(const String &query, const String &apiKey, float &outLat, float &outLon, String &outCity,
+                      String &outState, String &outError, bool &outRetryable);

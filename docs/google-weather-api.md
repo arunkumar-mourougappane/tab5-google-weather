@@ -22,6 +22,7 @@ billing enabled and the Weather API turned on.
 servers (IP allowlist) or browsers (HTTP referrer allowlist) — neither fits a
 device on a residential/DHCP IP with no referrer header. Practical options, worst
 to best:
+
 1. Store the key unrestricted. Works, but a pulled-apart device, a flash dump,
    or a packet capture leaks a live-billing key.
 2. Restrict the key to the Weather API only (no referrer/IP restriction) — caps
@@ -99,6 +100,36 @@ free tier terms) → store the resulting lat/lon in NVS via `ConfigStore`
 Not re-geocoded on every refresh, only once (`ConfigStore::hasLocation()`
 gates it). A location change means re-running setup — the right tradeoff for
 something wall-mounted, not portable.
+
+## Timezone
+
+The dashboard's clock needs local wall-clock time, but this device's own NTP
+sync (`syncTimeOverNtp()` in `src/main.cpp`) only ever gets UTC — no timezone
+resolution built in, same "device has no way to know this on its own" gap as
+location/lat-lon. Resolved via Google's
+[Time Zone API](https://developers.google.com/maps/documentation/timezone/overview)
+(`resolveTimezone()` in `src/timezone_lookup.cpp`) — a *third* Maps Platform
+API on the same key (alongside Geocoding and Weather), needs its own
+enablement.
+
+Called once, right after geocoding succeeds (needs the resolved lat/lon):
+`resolveTimezoneIfNeeded()` in `src/main.cpp` → Google returns `rawOffset` +
+`dstOffset` (both seconds) for the coordinates *as of the timestamp sent with
+the request* → stored in NVS via `ConfigStore` (`ConfigStore::hasTimezone()`
+gates re-resolving, same pattern as `hasLocation()`).
+
+Applied at display time only (`dashboard_ui.cpp`'s `refreshDashboardClock()`
+adds the stored offset to the current UTC epoch before formatting), not via
+`configTime()`/`setenv("TZ",...)` — deliberately: the offset can resolve well
+after NTP sync already completed, and re-touching NTP config after the fact
+risks a disruptive resync of an already-correct clock for no benefit. This
+also means no on-device IANA-timezone/POSIX-TZ-string table is needed; Google
+computes the DST-aware offset server-side, we just store two numbers.
+
+**Known simplification:** the offsets are a snapshot, not a rule set — a
+device with long enough uptime to cross a DST transition without rebooting
+keeps showing the pre-transition offset until the next re-geocode (a
+provisioning change, or a future periodic re-check, not built yet).
 
 ## Quota / pricing
 

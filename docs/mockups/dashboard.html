@@ -33,11 +33,19 @@
   .main { flex: 1 1 auto; display: grid; grid-template-columns: 1.55fr 1fr; gap: 0; min-height: 0; border-top: 1px solid var(--line); }
   .primary { padding: 22px 30px 18px; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid var(--line); min-height: 0; }
 
-  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .metric { background: var(--panel); padding: 12px 14px; display: flex; flex-direction: column; gap: 5px; }
-  .metric .label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sub); }
-  .metric .value { font-family: 'IBM Plex Mono', monospace; font-size: 17px; font-weight: 500; }
-  .metric .value span { font-size: 11px; color: var(--sub); font-weight: 400; }
+  .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .metric { background: var(--panel); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .metric .label { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sub); }
+  .metric .value { font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 500; text-align: right; }
+  .metric .value span { font-size: 14px; color: var(--sub); font-weight: 400; }
+  /* Shared severity scale - same 3 colors UV and Precip both use, not
+     one class pair per metric (severityColor() in dashboard_ui.cpp is
+     the single source of which metrics get this treatment and why -
+     ascending risk gradient only, not applied to humidity/wind). */
+  .metric .value.sev-low { color: var(--teal); }
+  .metric .value.sev-moderate { color: var(--brass); }
+  .metric .value.sev-high { color: var(--ember); }
+  .metric .value.sev-low span, .metric .value.sev-moderate span, .metric .value.sev-high span { color: inherit; }
 
   .hourly { padding: 14px 30px 16px; border-top: 1px solid var(--line); }
   .hourly .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
@@ -75,7 +83,6 @@
   @media (max-width: 760px) {
     .now .temp { font-size: 72px; }
     .now .temp .deg { font-size: 30px; }
-    .metrics { grid-template-columns: repeat(2, 1fr); }
     .hourly-row { grid-template-columns: repeat(4, 1fr); row-gap: 14px; }
   }
 </style>
@@ -143,8 +150,8 @@
         <div class="metrics">
           <div class="metric"><span class="label">Humidity</span><span class="value">62<span>%</span></span></div>
           <div class="metric"><span class="label">Wind</span><span class="value">8<span> mph NW</span></span></div>
-          <div class="metric"><span class="label">UV Index</span><span class="value">4<span>moderate</span></span></div>
-          <div class="metric"><span class="label">Precip</span><span class="value">20<span>%</span></span></div>
+          <div class="metric"><span class="label">UV Index</span><span class="value sev-moderate">4<span>moderate</span></span></div>
+          <div class="metric"><span class="label">Precip</span><span class="value sev-moderate">20<span>%</span></span></div>
         </div>
       </div>
 

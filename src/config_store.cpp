@@ -16,6 +16,12 @@ void ConfigStore::begin() {
   hasLocation_ = prefs_.getBool("has_loc", false);
   latitude_ = prefs_.getFloat("lat", 0.0f);
   longitude_ = prefs_.getFloat("lon", 0.0f);
+  city_ = prefs_.getString("city", "");
+  state_ = prefs_.getString("state", "");
+
+  hasTimezone_ = prefs_.getBool("has_tz", false);
+  timezoneRawOffsetSec_ = prefs_.getInt("tz_raw", 0);
+  timezoneDstOffsetSec_ = prefs_.getInt("tz_dst", 0);
 }
 
 bool ConfigStore::isProvisioned() const {
@@ -38,19 +44,41 @@ void ConfigStore::saveProvisioning(const String &ssid, const String &password,
   prefs_.putBool("units_imp", unitsImperial_);
 
   // A location string change (re-running setup) invalidates any previously
-  // resolved lat/lon — force a re-geocode on next boot.
+  // resolved lat/lon/city/state/timezone — force a re-geocode (and
+  // re-resolve of timezone, which depends on lat/lon) on next boot rather
+  // than showing a stale place name or offset until that happens.
   hasLocation_ = false;
+  city_ = "";
+  state_ = "";
+  hasTimezone_ = false;
+  timezoneRawOffsetSec_ = 0;
+  timezoneDstOffsetSec_ = 0;
   prefs_.putBool("has_loc", false);
+  prefs_.putBool("has_tz", false);
 }
 
-void ConfigStore::saveLocation(float lat, float lon) {
+void ConfigStore::saveLocation(float lat, float lon, const String &city, const String &state) {
   latitude_ = lat;
   longitude_ = lon;
+  city_ = city;
+  state_ = state;
   hasLocation_ = true;
 
   prefs_.putFloat("lat", latitude_);
   prefs_.putFloat("lon", longitude_);
+  prefs_.putString("city", city_);
+  prefs_.putString("state", state_);
   prefs_.putBool("has_loc", true);
+}
+
+void ConfigStore::saveTimezone(int32_t rawOffsetSec, int32_t dstOffsetSec) {
+  timezoneRawOffsetSec_ = rawOffsetSec;
+  timezoneDstOffsetSec_ = dstOffsetSec;
+  hasTimezone_ = true;
+
+  prefs_.putInt("tz_raw", timezoneRawOffsetSec_);
+  prefs_.putInt("tz_dst", timezoneDstOffsetSec_);
+  prefs_.putBool("has_tz", true);
 }
 
 void ConfigStore::reset() {
@@ -63,4 +91,9 @@ void ConfigStore::reset() {
   hasLocation_ = false;
   latitude_ = 0.0f;
   longitude_ = 0.0f;
+  city_ = "";
+  state_ = "";
+  hasTimezone_ = false;
+  timezoneRawOffsetSec_ = 0;
+  timezoneDstOffsetSec_ = 0;
 }

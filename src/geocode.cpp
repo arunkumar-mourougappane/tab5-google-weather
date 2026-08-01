@@ -4,26 +4,12 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+#include "geocode_parse.h"
 #include "http_json_client.h"
 #include "json_arena_allocator.h"
 #include "logging.h"
 
 namespace {
-
-// See weather.cpp for why this is stack-, not heap-, backed, and
-// docs/firmware-architecture.md's "Memory" section for the reasoning.
-//
-// The "Geocoding's response is much smaller than the weather endpoints'"
-// assumption this size was originally picked against turned out to be
-// wrong: confirmed on real hardware that a real ZIP-code query response
-// (5 address_components, bounds+viewport+location geometry,
-// postcode_localities, place_id, formatted_address — none of which this
-// file reads) overflowed 2048 bytes and made geocodeLocation() fail with
-// a parse error on every single retry, deterministically, since the
-// response for a given query is the same every time. Same fix as
-// weather.cpp: a parse filter (below) keeps the parsed document sized
-// against what's actually read, not the full response.
-constexpr size_t kJsonArenaBytes = 2048;
 
 String urlEncode(const String &s) {
   String out;
@@ -77,8 +63,8 @@ void describeStatus(const char *status, const char *apiErrorMessage, String &out
 
 }  // namespace
 
-bool geocodeLocation(const String &query, const String &apiKey, float &outLat, float &outLon,
-                      String &outError, bool &outRetryable) {
+bool geocodeLocation(const String &query, const String &apiKey, float &outLat, float &outLon, String &outCity,
+                      String &outState, String &outError, bool &outRetryable) {
   // NOTE: setInsecure() skips TLS certificate validation. Acceptable for a
   // personal-use scaffold talking to a fixed, well-known Google endpoint;
   // the honest fix (pinning Google's root CA) is a follow-up, not done
@@ -91,21 +77,20 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
   const String url = "https://maps.googleapis.com/maps/api/geocode/json?address=" + urlEncode(query) +
                       "&key=" + apiKey;
 
-  // Keeps the parsed document sized against what this function actually
-  // reads (status/error_message/the first result's lat+lng) rather than
-  // the full response — see kJsonArenaBytes's comment above for why this
-  // matters here specifically.
+  // buildGeocodeFilter() (geocode_parse.h): keeps the parsed document
+  // sized against what this function actually reads rather than the
+  // full response - see kGeocodeJsonArenaBytes's comment for why this
+  // matters here specifically. Shared with test/test_geocode/ so a test
+  // parsing a real captured response exercises the exact filter and
+  // arena size production uses, not a parallel copy that could drift.
   JsonDocument filter;
-  filter["status"] = true;
-  filter["error_message"] = true;
-  filter["results"][0]["geometry"]["location"]["lat"] = true;
-  filter["results"][0]["geometry"]["location"]["lng"] = true;
+  buildGeocodeFilter(filter);
 
   // One-shot call, no connection reuse needed (unlike weather.cpp, which
   // makes three back-to-back calls to the same host) — a fresh
   // HTTPClient/WiFiClientSecure per call is fine here. See
   // http_json_client.h for why the transport itself is shared.
-  StackJsonDocument<kJsonArenaBytes> stackDoc;
+  StackJsonDocument<kGeocodeJsonArenaBytes> stackDoc;
   JsonDocument &doc = stackDoc.doc();
   int httpCode = 0;
   String body;
@@ -127,7 +112,7 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
     // overflow looks like — this line is what would have made that
     // diagnosable immediately instead of needing a hardware log to spot.
     LOG_D("geocode", "JSON arena: %u bytes used of %u, overflowed=%d\n",
-          static_cast<unsigned>(stackDoc.bytesUsed()), static_cast<unsigned>(kJsonArenaBytes),
+          static_cast<unsigned>(stackDoc.bytesUsed()), static_cast<unsigned>(kGeocodeJsonArenaBytes),
           stackDoc.overflowed());
 
     if (httpCode != HTTP_CODE_OK) {
@@ -146,7 +131,7 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
 
   LOG_D("geocode", "HTTP status: %d\n", httpCode);
   LOG_D("geocode", "JSON arena: %u bytes used of %u, overflowed=%d\n", static_cast<unsigned>(stackDoc.bytesUsed()),
-        static_cast<unsigned>(kJsonArenaBytes), stackDoc.overflowed());
+        static_cast<unsigned>(kGeocodeJsonArenaBytes), stackDoc.overflowed());
 
   const char *status = doc["status"] | "";
   LOG_D("geocode", "status field: \"%s\"\n", status);
@@ -159,8 +144,14 @@ bool geocodeLocation(const String &query, const String &apiKey, float &outLat, f
 
   outLat = doc["results"][0]["geometry"]["location"]["lat"] | 0.0f;
   outLon = doc["results"][0]["geometry"]["location"]["lng"] | 0.0f;
+
+  JsonArrayConst components = doc["results"][0]["address_components"].as<JsonArrayConst>();
+  outCity = findAddressComponent(components, "locality", /*useShortName=*/false);
+  outState = findAddressComponent(components, "administrative_area_level_1", /*useShortName=*/true);
+
   LOG_I("geocode", "parsed lat=%ld.%03ld lon=%ld.%03ld (x1000 int, avoids relying on printf %%f)\n",
         static_cast<long>(outLat * 1000) / 1000, labs(static_cast<long>(outLat * 1000)) % 1000,
         static_cast<long>(outLon * 1000) / 1000, labs(static_cast<long>(outLon * 1000)) % 1000);
+  LOG_I("geocode", "city=\"%s\" state=\"%s\"\n", outCity.c_str(), outState.c_str());
   return true;
 }

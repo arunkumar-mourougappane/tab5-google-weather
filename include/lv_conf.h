@@ -39,4 +39,15 @@
 #define LV_USE_PERF_MONITOR 0
 #define LV_USE_MEM_MONITOR 0
 
+/* Dashboard's hero temperature font (src/dashboard_fonts/) is large enough
+ * (312px) that uncompressed glyph bitmaps cost real flash - RLE compression
+ * (LVGL's own built-in scheme, not a new dependency) cuts that down. Only
+ * worth paying its ~30% render-time cost on large, rarely-redrawn glyphs
+ * (this one redraws once per refresh cycle, not per frame) - see
+ * docs/rendering.md's font notes. Every other generated font stays
+ * uncompressed; this flag only enables the *decode* path, so it doesn't
+ * change how any existing uncompressed font (built-in or generated)
+ * behaves. */
+#define LV_USE_FONT_COMPRESSED 1
+
 #endif /* LV_CONF_H */
