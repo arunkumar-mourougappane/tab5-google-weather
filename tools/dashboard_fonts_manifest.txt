@@ -49,8 +49,18 @@
 # tools/font_gallery_manifest.txt, not a regression introduced here.
 
 # --- IBM Plex Mono, weight 500 (font-weight:500 in the mockup CSS) ---
-font_plexmono_hero_108|docs/mockups/assets/fonts/plexmono-500.woff2|108|0123456789°|1
-font_plexmono_deg_44|docs/mockups/assets/fonts/plexmono-500.woff2|44|°FC|1
+# 240/128px, not the mockup's 108/44px - hi/lo moving out of the "now"
+# stack (see the info-column rearrange) left a lot of unused vertical
+# space below it, per hardware review. Went 108->160->200->240 (hero)
+# and 44->64->80->128 (deg) across successive review passes. This size
+# triggered a uiTask "Stack protection fault" on hardware (SP pinned at
+# the task's stack bound) - root cause was uiTask's 8192-byte stack
+# being too small for LVGL's RLE decompression of a glyph this large,
+# not the font size itself; fixed by giving uiTask a 16384-byte stack
+# (main.cpp, matching netTask's existing size) instead of shrinking the
+# font back down.
+font_plexmono_hero_240|docs/mockups/assets/fonts/plexmono-500.woff2|240|0123456789°|1
+font_plexmono_deg_128|docs/mockups/assets/fonts/plexmono-500.woff2|128|°FC|1
 font_plexmono_clock_20|docs/mockups/assets/fonts/plexmono-500.woff2|20|0123456789:|0
 # 26px, not the mockup's 17px - the metrics grid moved from 1x4 to 2x2
 # (more room per cell) and got sized up to match, per hardware review.
@@ -58,8 +68,10 @@ font_plexmono_metricvalue_26|docs/mockups/assets/fonts/plexmono-500.woff2|26|012
 font_plexmono_hourtemp_13|docs/mockups/assets/fonts/plexmono-500.woff2|13|0123456789°|0
 
 # --- IBM Plex Mono, weight 400 (default - no font-weight set in CSS) ---
-font_plexmono_hilo_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|0123456789°↑↓HIGLOW/ |0
-font_plexmono_feels_13|docs/mockups/assets/fonts/plexmono-400.woff2|13|ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789°· :|0
+# 18/16px, not the mockup's 14/13px - same "fill the unused space"
+# resize as the hero/deg fonts above.
+font_plexmono_hilo_18|docs/mockups/assets/fonts/plexmono-400.woff2|18|0123456789°↑↓HIGLOW/ |0
+font_plexmono_feels_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789°· :|0
 font_plexmono_statusright_13|docs/mockups/assets/fonts/plexmono-400.woff2|13|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 |0
 font_plexmono_dayrange_12|docs/mockups/assets/fonts/plexmono-400.woff2|12|0123456789°|0
 # 20px, not the mockup's 11.5px - matches font_archivo_statusname_20 so
@@ -84,7 +96,9 @@ font_plexmono_hourpop_10|docs/mockups/assets/fonts/plexmono-400.woff2|10|0123456
 # Condition text and location name are API/user-driven strings (not a
 # fixed vocabulary), so these get a full Latin subset + common name
 # punctuation rather than the narrow subsets above.
-font_archivo_condition_19|docs/mockups/assets/fonts/archivo-variable.woff2|19|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz /-|0
+# 26px, not the mockup's 19px - same "fill the unused space" resize as
+# the hero/deg/hilo/feels fonts above.
+font_archivo_condition_26|docs/mockups/assets/fonts/archivo-variable.woff2|26|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz /-|0
 # 20px, not the mockup's 17px - a deliberate bump (bigger, easier to read
 # as the screen's de facto title) per hardware review, not an oversight.
 font_archivo_statusname_20|docs/mockups/assets/fonts/archivo-variable.woff2|20|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ',.-|0

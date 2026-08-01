@@ -476,7 +476,12 @@ void setup() {
   showStatusScreen("Starting...", "", /*loading=*/true);
 
   logHeapStats("before task creation");
-  xTaskCreatePinnedToCore(uiTaskFn, "uiTask", 8192, nullptr, 1, nullptr, 0);
+  // 16384, not 8192 - hardware crashed with a "Stack protection fault" in
+  // this task (SP pinned exactly at the stack's upper bound) when
+  // rendering the hero temp font at 240px; LVGL's RLE decompression for
+  // large compressed glyphs needs more of this task's stack than a
+  // smaller/uncompressed font does. Matches netTask's existing size.
+  xTaskCreatePinnedToCore(uiTaskFn, "uiTask", 16384, nullptr, 1, nullptr, 0);
   xTaskCreatePinnedToCore(netTaskFn, "netTask", 16384, nullptr, 1, nullptr, 1);
 
   // Nothing left for the default Arduino task to do — uiTask/netTask above

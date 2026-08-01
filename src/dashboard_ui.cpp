@@ -209,25 +209,64 @@ lv_obj_t *buildPrimaryColumn(lv_obj_t *parent) {
   lv_obj_set_style_border_color(col, lv_color_hex(kLine), 0);
   lv_obj_set_style_border_width(col, 1, 0);
 
+  // Hero temp fills the left side; glyph-less info column (condition,
+  // feels-like, hi/lo - no icon, still out of scope per the "skip icons
+  // in Phase 1" decision) sits right-aligned on the right, replacing the
+  // earlier full-width-stacked layout where hi/lo was its own row below
+  // everything.
   lv_obj_t *top = makeColumn(col);
-  lv_obj_set_style_pad_row(top, 2, 0);
+  lv_obj_set_width(top, LV_PCT(100));
 
-  lv_obj_t *tempRow = makeRow(top);
-  lv_obj_set_flex_align(tempRow, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-  g_tempLabel = makeLabel(tempRow, kInk, &font_plexmono_hero_108);
-  g_degLabel = makeLabel(tempRow, kBrassStrong, &font_plexmono_deg_44);
+  lv_obj_t *nowRow = makeRow(top);
+  lv_obj_set_width(nowRow, LV_PCT(100));
+  lv_obj_set_flex_align(nowRow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
 
-  g_conditionLabel = makeLabel(top, kInk, &font_archivo_condition_19);
-  g_feelsLabel = makeLabel(top, kSub, &font_plexmono_feels_13);
+  lv_obj_t *tempBlock = makeRow(nowRow);
+  lv_obj_set_flex_align(tempBlock, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+  g_tempLabel = makeLabel(tempBlock, kInk, &font_plexmono_hero_240);
+  g_degLabel = makeLabel(tempBlock, kBrassStrong, &font_plexmono_deg_128);
 
-  lv_obj_t *hilo = makeRow(top);
-  lv_obj_set_style_pad_column(hilo, 22, 0);
-  lv_obj_set_style_pad_top(hilo, 4, 0);
-  lv_obj_set_flex_align(hilo, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  g_hiLabel = makeLabel(hilo, kEmber, &font_plexmono_hilo_14);
-  lv_obj_t *sep = makeLabel(hilo, kSub, &font_plexmono_hilo_14);
+  lv_obj_t *infoBlock = makeColumn(nowRow);
+  lv_obj_set_style_pad_row(infoBlock, 8, 0);
+  lv_obj_set_flex_align(infoBlock, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
+  // Fixed width, not LV_SIZE_CONTENT + max_width - g_conditionLabel below
+  // is set to LV_PCT(100) of this column, so a content-sized width here
+  // would be circular (infoBlock sizing off its child, that child sizing
+  // off infoBlock) the same way the earlier mainRow bug was; confirmed on
+  // hardware, it pushed the glyph placeholder out of bounds. 210px is
+  // whatever's left once the hero temp claims its worst case width (3
+  // digits, e.g. "104", at font_plexmono_hero_240's 144px/digit advance +
+  // the deg suffix's ~77px) out of the primary column's ~718px content
+  // width (778px flex-grow share minus its own 30px*2 horizontal
+  // padding).
+  lv_obj_set_width(infoBlock, 210);
+
+  // Placeholder only - a plain circle standing in for a real condition
+  // glyph, so the arrangement (glyph above condition/feels/hi-lo) can be
+  // judged on hardware before building an actual icon set. Not wired to
+  // cur.condition.type; icons are still out of scope for this phase.
+  // 130px, not 105px - filling more of the space freed up once hi/lo
+  // moved out of this column, per hardware review.
+  lv_obj_t *glyphPlaceholder = lv_obj_create(infoBlock);
+  lv_obj_set_size(glyphPlaceholder, 130, 130);
+  lv_obj_set_style_radius(glyphPlaceholder, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_bg_opa(glyphPlaceholder, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_color(glyphPlaceholder, lv_color_hex(kBrass), 0);
+  lv_obj_set_style_border_width(glyphPlaceholder, 3, 0);
+  lv_obj_clear_flag(glyphPlaceholder, LV_OBJ_FLAG_SCROLLABLE);
+
+  g_conditionLabel = makeLabel(infoBlock, kInk, &font_archivo_condition_26);
+  lv_obj_set_width(g_conditionLabel, LV_PCT(100));
+  lv_label_set_long_mode(g_conditionLabel, LV_LABEL_LONG_DOT);
+  g_feelsLabel = makeLabel(infoBlock, kSub, &font_plexmono_feels_16);
+
+  lv_obj_t *hilo = makeRow(infoBlock);
+  lv_obj_set_style_pad_column(hilo, 14, 0);
+  lv_obj_set_flex_align(hilo, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  g_hiLabel = makeLabel(hilo, kEmber, &font_plexmono_hilo_18);
+  lv_obj_t *sep = makeLabel(hilo, kSub, &font_plexmono_hilo_18);
   lv_label_set_text(sep, "/");
-  g_loLabel = makeLabel(hilo, kTeal, &font_plexmono_hilo_14);
+  g_loLabel = makeLabel(hilo, kTeal, &font_plexmono_hilo_18);
 
   // 2x2, not the mockup's 1x4 - more room per cell within the same
   // overall width, which is what let the metric font sizes above grow.

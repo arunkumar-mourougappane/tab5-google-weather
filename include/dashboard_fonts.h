@@ -4,13 +4,13 @@
 
 #include <lvgl.h>
 
-extern const lv_font_t font_plexmono_hero_108;
-extern const lv_font_t font_plexmono_deg_44;
+extern const lv_font_t font_plexmono_hero_240;
+extern const lv_font_t font_plexmono_deg_128;
 extern const lv_font_t font_plexmono_clock_20;
 extern const lv_font_t font_plexmono_metricvalue_26;
 extern const lv_font_t font_plexmono_hourtemp_13;
-extern const lv_font_t font_plexmono_hilo_14;
-extern const lv_font_t font_plexmono_feels_13;
+extern const lv_font_t font_plexmono_hilo_18;
+extern const lv_font_t font_plexmono_feels_16;
 extern const lv_font_t font_plexmono_statusright_13;
 extern const lv_font_t font_plexmono_dayrange_12;
 extern const lv_font_t font_plexmono_region_20;
@@ -19,7 +19,7 @@ extern const lv_font_t font_plexmono_metricspan_14;
 extern const lv_font_t font_plexmono_title_11;
 extern const lv_font_t font_plexmono_metriclabel_12;
 extern const lv_font_t font_plexmono_hourpop_10;
-extern const lv_font_t font_archivo_condition_19;
+extern const lv_font_t font_archivo_condition_26;
 extern const lv_font_t font_archivo_statusname_20;
 extern const lv_font_t font_archivo_dayname_14;
 
