@@ -24,4 +24,5 @@ font_archivo_128|docs/mockups/assets/fonts/archivo-variable.woff2|128|0123456789
 font_archivo_160|docs/mockups/assets/fonts/archivo-variable.woff2|160|0123456789°|Archivo 160px
 font_archivo_192|docs/mockups/assets/fonts/archivo-variable.woff2|192|0123456789°|Archivo 192px
 font_archivo_256|docs/mockups/assets/fonts/archivo-variable.woff2|256|0123456789°|Archivo 256px
+font_archivo_384|docs/mockups/assets/fonts/archivo-variable.woff2|384|0123456789°|Archivo 384px
 font_archivo_512|docs/mockups/assets/fonts/archivo-variable.woff2|512|0123456789°|Archivo 512px (taller than the 720px panel)

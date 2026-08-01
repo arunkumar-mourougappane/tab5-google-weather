@@ -13,6 +13,7 @@ extern const lv_font_t font_archivo_128;
 extern const lv_font_t font_archivo_160;
 extern const lv_font_t font_archivo_192;
 extern const lv_font_t font_archivo_256;
+extern const lv_font_t font_archivo_384;
 extern const lv_font_t font_archivo_512;
 
 static constexpr FontGalleryEntry kFontGalleryEntries[] = {
@@ -25,6 +26,7 @@ static constexpr FontGalleryEntry kFontGalleryEntries[] = {
     {&font_archivo_160, "Archivo 160px"},
     {&font_archivo_192, "Archivo 192px"},
     {&font_archivo_256, "Archivo 256px"},
+    {&font_archivo_384, "Archivo 384px"},
     {&font_archivo_512, "Archivo 512px (taller than the 720px panel)"},
 
 };
