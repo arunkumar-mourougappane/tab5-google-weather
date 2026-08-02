@@ -13,10 +13,19 @@
 // largest of the three endpoints - day+night split, sun/moon events)
 // needed >6144 bytes natively (64-bit host - see
 // geocode_parse.h's kGeocodeJsonArenaBytes comment for why native's
-// number runs higher than the real 32-bit ESP32 target's). Re-check
-// against `pio test -e tab5` (on-device) / weather.cpp's own LOG_D
-// "bytesUsed" output if this ever needs tightening.
-constexpr size_t kWeatherJsonArenaBytes = 12288;
+// number runs higher than the real 32-bit ESP32 target's).
+//
+// 12288 -> 16384: passed locally (macOS/arm64/clang) but
+// test_hourly_forecast_parses_without_overflow overflowed in CI (Linux/
+// x86_64/gcc) - same toolchain-dependent ArduinoJson pool-slot padding
+// gap kGeocodeJsonArenaBytes hit before, not caught here until this
+// project's CI history was actually reviewed (silently red since the
+// Hourly-detail screen's own feature commit, which happened to be
+// pushed together with the next commit so its own CI run never ran
+// standalone). Re-check against `pio test -e tab5` (on-device) /
+// weather.cpp's own LOG_D "bytesUsed" output if this ever needs
+// tightening.
+constexpr size_t kWeatherJsonArenaBytes = 16384;
 
 // Marks the subset of a weatherCondition object this project actually
 // reads - used to build each endpoint's filter below.

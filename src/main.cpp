@@ -503,17 +503,15 @@ void setup() {
   // large compressed glyphs needs more of this task's stack than a
   // smaller/uncompressed font does. Matches netTask's existing size.
   xTaskCreatePinnedToCore(uiTaskFn, "uiTask", 16384, nullptr, 1, nullptr, 0);
-  // 24576, not 16384 - kWeatherJsonArenaBytes (weather_parse.h) grew to
-  // 12288 for the 16-hour forecast fetch (hourly_detail_ui.cpp), a
-  // StackJsonDocument<N> that lives as a real stack-frame array inside
-  // fetchHourlyForecast(), called from this task. That alone would be
-  // 75% of the previous 16384-byte stack, leaving too little headroom
-  // for the rest of the call chain (HTTPClient/WiFiClientSecure buffers,
-  // String temporaries, the filter JsonDocument) - same risk pattern
-  // that caused uiTask's own stack-overflow crash above, addressed
-  // proactively here instead of waiting for the same failure on this
-  // task.
-  xTaskCreatePinnedToCore(netTaskFn, "netTask", 24576, nullptr, 1, nullptr, 1);
+  // 28672, not 24576 - kWeatherJsonArenaBytes (weather_parse.h) grew
+  // again, 12288 to 16384 (a CI-only native-test arena overflow fix, not
+  // a real 32-bit-target requirement, but it's the same shared constant
+  // production code sizes its StackJsonDocument<N> from). Keeping this
+  // task's stack at the same proportion of headroom over that arena
+  // (previously 2x/50% used, now kept above 1.75x) rather than letting
+  // the ratio silently shrink - same proactive reasoning as the last
+  // bump above.
+  xTaskCreatePinnedToCore(netTaskFn, "netTask", 28672, nullptr, 1, nullptr, 1);
 
   // Nothing left for the default Arduino task to do — uiTask/netTask above
   // own everything from here. Deletes itself rather than falling through
