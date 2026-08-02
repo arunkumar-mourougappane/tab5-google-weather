@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 26 px
  * Bpp: 4
- * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/dashboard_fonts_ttf_cache.Qx4npn6JAO/docs_mockups_assets_fonts_plexmono-500_woff2.ttf --size 26 --bpp 4 --format lvgl --symbols 0123456789. --no-compress --lv-font-name font_plexmono_metricvalue_26 -o src/dashboard_fonts/font_plexmono_metricvalue_26.c
+ * Opts: --font /var/folders/bq/kb5g0c6s7hq0gck8hf7gq_yw0000gn/T/dashboard_fonts_ttf_cache.Qx4npn6JAO/docs_mockups_assets_fonts_plexmono-500_woff2.ttf --size 26 --bpp 4 --format lvgl --symbols 0123456789° --no-compress --lv-font-name font_plexmono_hcardtemp_26 -o src/dashboard_fonts/font_plexmono_hcardtemp_26.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -10,11 +10,11 @@
 #include "lvgl/lvgl.h"
 #endif
 
-#ifndef FONT_PLEXMONO_METRICVALUE_26
-#define FONT_PLEXMONO_METRICVALUE_26 1
+#ifndef FONT_PLEXMONO_HCARDTEMP_26
+#define FONT_PLEXMONO_HCARDTEMP_26 1
 #endif
 
-#if FONT_PLEXMONO_METRICVALUE_26
+#if FONT_PLEXMONO_HCARDTEMP_26
 
 /*-----------------
  *    BITMAPS
@@ -22,10 +22,6 @@
 
 /*Store the image of the glyphs*/
 static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
-    /* U+002E "." */
-    0x1, 0x44, 0x0, 0x2f, 0xff, 0xb0, 0x7f, 0xff,
-    0xf0, 0x6f, 0xff, 0xf0, 0xb, 0xfe, 0x60,
-
     /* U+0030 "0" */
     0x0, 0x2, 0x9d, 0xfe, 0xc7, 0x0, 0x0, 0x0,
     0x5f, 0xff, 0xff, 0xff, 0xd1, 0x0, 0x3, 0xff,
@@ -215,7 +211,16 @@ static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
     0x0, 0x0, 0x0, 0x0, 0x2e, 0xff, 0x40, 0x0,
     0x0, 0x0, 0x3, 0xef, 0xf7, 0x0, 0x0, 0x0,
     0x0, 0x5f, 0xff, 0x70, 0x0, 0x0, 0x0, 0x9,
-    0xff, 0xf5, 0x0, 0x0, 0x0
+    0xff, 0xf5, 0x0, 0x0, 0x0,
+
+    /* U+00B0 "°" */
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x7d, 0xff,
+    0xb3, 0x0, 0xa, 0xff, 0xff, 0xff, 0x40, 0x5f,
+    0xf6, 0x2, 0xbf, 0xe0, 0xbf, 0x80, 0x0, 0xe,
+    0xf4, 0xcf, 0x50, 0x0, 0xc, 0xf6, 0xbf, 0x90,
+    0x0, 0xe, 0xf4, 0x5f, 0xf6, 0x12, 0xbf, 0xe0,
+    0xa, 0xff, 0xff, 0xff, 0x40, 0x0, 0x6c, 0xfe,
+    0xa2, 0x0
 };
 
 
@@ -225,34 +230,35 @@ static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
 
 static const lv_font_fmt_txt_glyph_dsc_t glyph_dsc[] = {
     {.bitmap_index = 0, .adv_w = 0, .box_w = 0, .box_h = 0, .ofs_x = 0, .ofs_y = 0} /* id = 0 reserved */,
-    {.bitmap_index = 0, .adv_w = 250, .box_w = 6, .box_h = 5, .ofs_x = 5, .ofs_y = 0},
-    {.bitmap_index = 15, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 148, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 281, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 414, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 0, .ofs_y = 0},
-    {.bitmap_index = 547, .adv_w = 250, .box_w = 15, .box_h = 19, .ofs_x = 0, .ofs_y = 0},
-    {.bitmap_index = 690, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 823, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 956, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 1089, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
-    {.bitmap_index = 1222, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0}
+    {.bitmap_index = 0, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 133, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 266, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 399, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 0, .ofs_y = 0},
+    {.bitmap_index = 532, .adv_w = 250, .box_w = 15, .box_h = 19, .ofs_x = 0, .ofs_y = 0},
+    {.bitmap_index = 675, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 808, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 941, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 1074, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 1207, .adv_w = 250, .box_w = 14, .box_h = 19, .ofs_x = 1, .ofs_y = 0},
+    {.bitmap_index = 1340, .adv_w = 250, .box_w = 10, .box_h = 10, .ofs_x = 3, .ofs_y = 9}
 };
 
 /*---------------------
  *  CHARACTER MAPPING
  *--------------------*/
 
-static const uint8_t glyph_id_ofs_list_0[] = {
-    0, 0, 1, 2, 3, 4, 5, 6,
-    7, 8, 9, 10
-};
+
 
 /*Collect the unicode lists and glyph_id offsets*/
 static const lv_font_fmt_txt_cmap_t cmaps[] =
 {
     {
-        .range_start = 46, .range_length = 12, .glyph_id_start = 1,
-        .unicode_list = NULL, .glyph_id_ofs_list = glyph_id_ofs_list_0, .list_length = 12, .type = LV_FONT_FMT_TXT_CMAP_FORMAT0_FULL
+        .range_start = 48, .range_length = 10, .glyph_id_start = 1,
+        .unicode_list = NULL, .glyph_id_ofs_list = NULL, .list_length = 0, .type = LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY
+    },
+    {
+        .range_start = 176, .range_length = 1, .glyph_id_start = 11,
+        .unicode_list = NULL, .glyph_id_ofs_list = NULL, .list_length = 0, .type = LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY
     }
 };
 
@@ -277,7 +283,7 @@ static lv_font_fmt_txt_dsc_t font_dsc = {
     .cmaps = cmaps,
     .kern_dsc = NULL,
     .kern_scale = 0,
-    .cmap_num = 1,
+    .cmap_num = 2,
     .bpp = 4,
     .kern_classes = 0,
     .bitmap_format = 0,
@@ -294,9 +300,9 @@ static lv_font_fmt_txt_dsc_t font_dsc = {
 
 /*Initialize a public general font descriptor*/
 #if LVGL_VERSION_MAJOR >= 8
-const lv_font_t font_plexmono_metricvalue_26 = {
+const lv_font_t font_plexmono_hcardtemp_26 = {
 #else
-lv_font_t font_plexmono_metricvalue_26 = {
+lv_font_t font_plexmono_hcardtemp_26 = {
 #endif
     .get_glyph_dsc = lv_font_get_glyph_dsc_fmt_txt,    /*Function pointer to get glyph's data*/
     .get_glyph_bitmap = lv_font_get_bitmap_fmt_txt,    /*Function pointer to get glyph's bitmap*/
@@ -318,5 +324,5 @@ lv_font_t font_plexmono_metricvalue_26 = {
 
 
 
-#endif /*#if FONT_PLEXMONO_METRICVALUE_26*/
+#endif /*#if FONT_PLEXMONO_HCARDTEMP_26*/
 

@@ -91,6 +91,11 @@ font_plexmono_dailypop_11|docs/mockups/assets/fonts/plexmono-400.woff2|11|ABCDEF
 # 14px, not the mockup's 11px - matches the metrics grid's 2x2 resize.
 font_plexmono_metricspan_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789% |0
 font_plexmono_title_11|docs/mockups/assets/fonts/plexmono-400.woff2|11|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ·./-|0
+# 22px, not 11px - split off from font_plexmono_title_11 (still used by
+# the footer text) so only the "EXPAND ->" tap affordance grows. Started
+# at 26px to match the weather-condition text's size, dialed back to 22px
+# per request.
+font_plexmono_expand_22|docs/mockups/assets/fonts/plexmono-400.woff2|22|Expand ->|0
 # 16px, not 11px - split off from font_plexmono_title_11 (still used by
 # the footer text) so only the "HOURLY · NEXT 8 HOURS" section title
 # grows, same readability pass as the hour cells and the daily title.
@@ -122,3 +127,44 @@ font_archivo_condition_26|docs/mockups/assets/fonts/archivo-variable.woff2|26|AB
 # as the screen's de facto title) per hardware review, not an oversight.
 font_archivo_statusname_20|docs/mockups/assets/fonts/archivo-variable.woff2|20|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ',.-|0
 font_archivo_dayname_14|docs/mockups/assets/fonts/archivo-variable.woff2|14|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-|0
+
+# --- Hourly-detail screen (docs/mockups/hourly-detail.html) ---
+# Sizes bumped up from the mockup's own raw px (originally used as-is,
+# on the theory that this screen is read at arm's length, not across the
+# room - per hardware/visual review, the whole screen read too small at
+# that literal size and needed the same treatment the Dashboard already
+# got; went through two rounds - 12->14 first, then 14->16 plus the rest
+# of the screen once 14 still wasn't enough - not just the title).
+# 16px, not 14px.
+font_plexmono_backbtn_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz<- |0
+# 26px, not 22px (explicit request). Archivo default instance, same
+# simplification already used for the Dashboard's other Archivo headings
+# (font_archivo_statusname_20 etc.) - no hand-picked bold weight axis
+# value even though the mockup's h2 is font-weight 700.
+font_archivo_hdtitle_26|docs/mockups/assets/fonts/archivo-variable.woff2|26|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz |0
+# 16px, not 14px. Full upper+lower, not uppercase-only - a real bug in
+# an earlier version: the code never actually uppercased displayLocation
+# (mixed case, e.g. "Dunlap, IL" - same field the Dashboard's own
+# g_nameLabel/font_archivo_statusname_20 already renders in natural
+# case, not force-uppercased), so lowercase letters had no glyph and
+# silently failed to render. Matches that existing convention instead of
+# introducing a new uppercase-then-display rule.
+font_plexmono_hdsub_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ,.|0
+# 14px, not 11px - the chart legend's "Temperature"/"Precipitation
+# chance" labels.
+font_plexmono_legend_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz |0
+# 14px, not 11px - hour-card time label ("NOW", "15", ...; also reused
+# for the chart's own x-axis hour labels) - raw hour-of-day, matching
+# the mockup's own sample data (t: "15", "16", ...) rather than the
+# Dashboard's own "+1Hr" relative convention (that was a Dashboard-
+# specific request, not carried over here without a reason to).
+font_plexmono_hcardtime_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|0123456789NOW|0
+# 20px, not 16px, weight 500 per the mockup's .hcard .temp.
+# 26px, not 20px - bumped again per hardware review, matching
+# hcardpop_18's own earlier bump pattern.
+font_plexmono_hcardtemp_26|docs/mockups/assets/fonts/plexmono-500.woff2|26|0123456789°|0
+# 13px, not 10px.
+# 18px, not 13px - the precip % value grew per hardware review, and moved
+# to the bottom of the hour card (space-between layout, away from the
+# time/icon/temp group) rather than sitting right under the temperature.
+font_plexmono_hcardpop_18|docs/mockups/assets/fonts/plexmono-400.woff2|18|0123456789%|0

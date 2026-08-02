@@ -50,26 +50,210 @@ constexpr char kHourlyForecastResponse[] = R"json(
     {
       "interval": {"startTime": "2026-08-01T13:00:00Z", "endTime": "2026-08-01T14:00:00Z"},
       "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 13, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
-      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/partly_cloudy", "description": {"text": "Partly cloudy"}, "type": "PARTLY_CLOUDY"},
+      "isDaytime": true,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Partly cloudy"}, "type": "PARTLY_CLOUDY"},
       "temperature": {"degrees": 68, "unit": "FAHRENHEIT"},
       "feelsLikeTemperature": {"degrees": 66, "unit": "FAHRENHEIT"},
-      "relativeHumidity": 62,
-      "uvIndex": 4,
+      "relativeHumidity": 60,
+      "uvIndex": 3,
       "precipitation": {"probability": {"percent": 10, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
-      "wind": {"direction": {"degrees": 310, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
       "cloudCover": 40
     },
     {
       "interval": {"startTime": "2026-08-01T14:00:00Z", "endTime": "2026-08-01T15:00:00Z"},
       "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 14, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
-      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/cloudy", "description": {"text": "Cloudy"}, "type": "CLOUDY"},
+      "isDaytime": true,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Cloudy"}, "type": "CLOUDY"},
       "temperature": {"degrees": 70, "unit": "FAHRENHEIT"},
-      "feelsLikeTemperature": {"degrees": 69, "unit": "FAHRENHEIT"},
-      "relativeHumidity": 58,
-      "uvIndex": 5,
+      "feelsLikeTemperature": {"degrees": 68, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
       "precipitation": {"probability": {"percent": 15, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
-      "wind": {"direction": {"degrees": 300, "cardinal": "WEST_NORTHWEST"}, "speed": {"value": 9, "unit": "MILES_PER_HOUR"}, "gust": {"value": 15, "unit": "MILES_PER_HOUR"}},
-      "cloudCover": 55
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-01T15:00:00Z", "endTime": "2026-08-01T16:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 15, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": true,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Cloudy"}, "type": "CLOUDY"},
+      "temperature": {"degrees": 71, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 69, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 20, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-01T16:00:00Z", "endTime": "2026-08-01T17:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 16, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": true,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Cloudy"}, "type": "CLOUDY"},
+      "temperature": {"degrees": 70, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 68, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 25, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-01T17:00:00Z", "endTime": "2026-08-01T18:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 17, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": true,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Cloudy"}, "type": "CLOUDY"},
+      "temperature": {"degrees": 67, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 65, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 30, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-01T18:00:00Z", "endTime": "2026-08-01T19:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 18, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": true,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Light rain"}, "type": "LIGHT_RAIN"},
+      "temperature": {"degrees": 64, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 62, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 35, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-01T19:00:00Z", "endTime": "2026-08-01T20:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 19, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": true,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Light rain"}, "type": "LIGHT_RAIN"},
+      "temperature": {"degrees": 61, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 59, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 30, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-01T20:00:00Z", "endTime": "2026-08-01T21:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 20, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": true,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Cloudy"}, "type": "CLOUDY"},
+      "temperature": {"degrees": 59, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 57, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 20, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-01T21:00:00Z", "endTime": "2026-08-01T22:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 21, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": false,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Mostly cloudy"}, "type": "MOSTLY_CLOUDY"},
+      "temperature": {"degrees": 57, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 55, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 15, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-01T22:00:00Z", "endTime": "2026-08-01T23:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 22, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": false,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Mostly cloudy"}, "type": "MOSTLY_CLOUDY"},
+      "temperature": {"degrees": 55, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 53, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 10, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-01T23:00:00Z", "endTime": "2026-08-01T00:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 1, "hours": 23, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": false,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Clear"}, "type": "CLEAR"},
+      "temperature": {"degrees": 54, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 52, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 10, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-02T00:00:00Z", "endTime": "2026-08-02T01:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 2, "hours": 0, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": false,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Clear"}, "type": "CLEAR"},
+      "temperature": {"degrees": 53, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 51, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 5, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-02T01:00:00Z", "endTime": "2026-08-02T02:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 2, "hours": 1, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": false,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Clear"}, "type": "CLEAR"},
+      "temperature": {"degrees": 52, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 50, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 5, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-02T02:00:00Z", "endTime": "2026-08-02T03:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 2, "hours": 2, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": false,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Clear"}, "type": "CLEAR"},
+      "temperature": {"degrees": 51, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 49, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 5, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-02T03:00:00Z", "endTime": "2026-08-02T04:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 2, "hours": 3, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": false,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Clear"}, "type": "CLEAR"},
+      "temperature": {"degrees": 50, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 48, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 0, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
+    },
+    {
+      "interval": {"startTime": "2026-08-02T04:00:00Z", "endTime": "2026-08-02T05:00:00Z"},
+      "displayDateTime": {"year": 2026, "month": 8, "day": 2, "hours": 4, "minutes": 0, "seconds": 0, "nanos": 0, "utcOffset": "-18000s"},
+      "isDaytime": false,
+      "weatherCondition": {"iconBaseUri": "https://maps.gstatic.com/weather/v1/x", "description": {"text": "Clear"}, "type": "CLEAR"},
+      "temperature": {"degrees": 50, "unit": "FAHRENHEIT"},
+      "feelsLikeTemperature": {"degrees": 48, "unit": "FAHRENHEIT"},
+      "relativeHumidity": 60,
+      "uvIndex": 3,
+      "precipitation": {"probability": {"percent": 0, "type": "NONE"}, "qpf": {"quantity": 0, "unit": "MM"}},
+      "wind": {"direction": {"degrees": 300, "cardinal": "NORTHWEST"}, "speed": {"value": 8, "unit": "MILES_PER_HOUR"}, "gust": {"value": 14, "unit": "MILES_PER_HOUR"}},
+      "cloudCover": 40
     }
   ]
 }
@@ -167,12 +351,20 @@ void test_hourly_forecast_parses_without_overflow() {
   for (JsonVariantConst hour : hours) {
     count++;
   }
-  TEST_ASSERT_EQUAL_size_t(2, count);
+  TEST_ASSERT_EQUAL_size_t(16, count);
 
   JsonVariantConst first = hours[0];
   TEST_ASSERT_EQUAL_INT(13, first["displayDateTime"]["hours"] | -1);
+  TEST_ASSERT_TRUE(first["isDaytime"] | false);
   TEST_ASSERT_EQUAL_FLOAT(68.0f, first["temperature"]["degrees"] | 0.0f);
   TEST_ASSERT_EQUAL_INT(10, first["precipitation"]["probability"]["percent"] | -1);
+
+  // The 16-hour span crosses sunset in this fixture (see the generated
+  // entries' isDaytime values) - confirms the filter/parse actually
+  // carries the field through, not just that it doesn't crash.
+  JsonVariantConst nightHour = hours[10];
+  TEST_ASSERT_EQUAL_INT(23, nightHour["displayDateTime"]["hours"] | -1);
+  TEST_ASSERT_FALSE(nightHour["isDaytime"] | true);
 }
 
 void test_daily_forecast_parses_without_overflow() {

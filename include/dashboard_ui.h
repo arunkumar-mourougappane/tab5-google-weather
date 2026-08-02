@@ -4,6 +4,8 @@
 // same convention as boot_ui.h.
 #pragma once
 
+#include <lvgl.h>
+
 #include "shared_state.h"
 
 // Builds the screen on first call (module-level statics, not rebuilt on
@@ -17,3 +19,10 @@ void showDashboardScreen(const SharedState::DashboardSnapshot &data);
 // once, independent of whether new data has arrived. No-op if the
 // dashboard hasn't been built yet.
 void refreshDashboardClock(const SharedState::DashboardSnapshot &data);
+
+// Returns the Dashboard's own lv_obj_t screen, for hourly_detail_ui.cpp's
+// "back" button to lv_screen_load() into. Only ever called from a screen
+// reachable *from* the Dashboard, so it's guaranteed already built
+// (nullptr only before the very first showDashboardScreen() call, which
+// can't happen here).
+lv_obj_t *dashboardScreenObj();

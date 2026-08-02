@@ -258,6 +258,7 @@ bool fetchHourlyForecast(const String &apiKey, float lat, float lon, bool unitsI
     }
     HourlyForecastPoint &point = out[outCount++];
     point.displayDateTime = hour["displayDateTime"]["hours"] | "";
+    point.isDaytime = hour["isDaytime"] | true;
     point.condition = parseCondition(hour["weatherCondition"]);
     point.temperature = hour["temperature"]["degrees"] | 0.0f;
     point.precipitationProbabilityPercent = hour["precipitation"]["probability"]["percent"] | 0;

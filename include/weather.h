@@ -6,13 +6,17 @@
 //
 // Fixed-capacity output arrays (kMaxHourlyPoints/kMaxDailyPoints), not
 // std::vector — the counts are small and known ahead of time (we only ever
-// ask for 8 hours / 7 days), so a caller-owned array plus an out-count
+// ask for 16 hours / 7 days), so a caller-owned array plus an out-count
 // avoids a heap allocation per refresh for no real benefit.
 #pragma once
 
 #include <Arduino.h>
 
-constexpr size_t kMaxHourlyPoints = 8;
+// 16, not 8 - the Dashboard's compact strip only ever shows 8
+// (dashboard_ui.cpp's own kMaxDashboardHourCells caps that independently),
+// but the Hourly-detail screen (hourly_detail_ui.cpp) needs the fuller
+// 16-hour view docs/mockups/hourly-detail.html calls for.
+constexpr size_t kMaxHourlyPoints = 16;
 constexpr size_t kMaxDailyPoints = 7;
 
 struct WeatherCondition {
@@ -38,6 +42,10 @@ struct CurrentConditions {
 
 struct HourlyForecastPoint {
   String displayDateTime;
+  bool isDaytime = true;  // A 16-hour span often crosses sunset/sunrise -
+                           // hourly_detail_ui.cpp's per-hour icons need
+                           // this to pick Moon/NightCloudy correctly via
+                           // weather_icon.h's bucketForCondition().
   WeatherCondition condition;
   float temperature = 0.0f;
   int precipitationProbabilityPercent = 0;

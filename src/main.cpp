@@ -27,6 +27,7 @@
 #include "dashboard_ui.h"
 #include "display.h"
 #include "geocode.h"
+#include "hourly_detail_ui.h"
 #include "logging.h"
 #include "provisioning.h"
 #include "shared_state.h"
@@ -428,9 +429,21 @@ void uiTaskFn(void *) {
 
     if (sharedState.tryConsumeDashboard(lastDashboard)) {
       showDashboardScreen(lastDashboard);
+      // hourlyDetailScreenBuilt() guards against eagerly building (and
+      // lv_screen_load()-ing to) hourly_detail_ui.cpp's screen before the
+      // user has ever tapped into it - once they have, this keeps it
+      // fresh in place if left open across a refresh, same principle as
+      // showDashboardScreen() above already relies on (lv_screen_load()
+      // only fires on that screen's own first build).
+      if (hourlyDetailScreenBuilt()) {
+        showHourlyDetailScreen(lastDashboard);
+      }
       dashboardShown = true;
     } else if (dashboardShown) {
       refreshDashboardClock(lastDashboard);
+      if (hourlyDetailScreenBuilt()) {
+        refreshHourlyDetailClock(lastDashboard);
+      }
     }
 
     delay(5);
@@ -482,7 +495,17 @@ void setup() {
   // large compressed glyphs needs more of this task's stack than a
   // smaller/uncompressed font does. Matches netTask's existing size.
   xTaskCreatePinnedToCore(uiTaskFn, "uiTask", 16384, nullptr, 1, nullptr, 0);
-  xTaskCreatePinnedToCore(netTaskFn, "netTask", 16384, nullptr, 1, nullptr, 1);
+  // 24576, not 16384 - kWeatherJsonArenaBytes (weather_parse.h) grew to
+  // 12288 for the 16-hour forecast fetch (hourly_detail_ui.cpp), a
+  // StackJsonDocument<N> that lives as a real stack-frame array inside
+  // fetchHourlyForecast(), called from this task. That alone would be
+  // 75% of the previous 16384-byte stack, leaving too little headroom
+  // for the rest of the call chain (HTTPClient/WiFiClientSecure buffers,
+  // String temporaries, the filter JsonDocument) - same risk pattern
+  // that caused uiTask's own stack-overflow crash above, addressed
+  // proactively here instead of waiting for the same failure on this
+  // task.
+  xTaskCreatePinnedToCore(netTaskFn, "netTask", 24576, nullptr, 1, nullptr, 1);
 
   // Nothing left for the default Arduino task to do — uiTask/netTask above
   // own everything from here. Deletes itself rather than falling through

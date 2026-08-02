@@ -16,7 +16,7 @@
 // number runs higher than the real 32-bit ESP32 target's). Re-check
 // against `pio test -e tab5` (on-device) / weather.cpp's own LOG_D
 // "bytesUsed" output if this ever needs tightening.
-constexpr size_t kWeatherJsonArenaBytes = 8192;
+constexpr size_t kWeatherJsonArenaBytes = 12288;
 
 // Marks the subset of a weatherCondition object this project actually
 // reads - used to build each endpoint's filter below.
@@ -49,6 +49,7 @@ inline void buildCurrentConditionsFilter(JsonDocument &filter) {
 inline void buildHourlyForecastFilter(JsonDocument &filter) {
   JsonObject hour = filter["forecastHours"][0].to<JsonObject>();
   hour["displayDateTime"]["hours"] = true;
+  hour["isDaytime"] = true;
   filterWeatherCondition(hour["weatherCondition"].to<JsonObject>());
   hour["temperature"]["degrees"] = true;
   hour["precipitation"]["probability"]["percent"] = true;
