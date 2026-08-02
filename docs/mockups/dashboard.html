@@ -27,6 +27,14 @@
   .statusbar .loc .region { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--sub); letter-spacing: 0.05em; text-transform: uppercase; }
   .statusbar .right { display: flex; align-items: center; gap: 22px; font-family: 'IBM Plex Mono', monospace; color: var(--sub); font-size: 12.5px; }
   .statusbar .clock { font-size: 20px; color: var(--ink); font-weight: 500; letter-spacing: 0.02em; }
+  .refresh-btn {
+    display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    border: 1px solid var(--line-strong); border-radius: 999px; background: transparent;
+    cursor: pointer; color: var(--sub); padding: 0;
+  }
+  .refresh-btn:hover { border-color: var(--brass); color: var(--brass-strong); }
+  .refresh-btn:active svg { animation: refresh-spin 0.5s ease-in-out; }
+  @keyframes refresh-spin { to { transform: rotate(180deg); } }
   .statusbar .sync { display: flex; align-items: center; gap: 7px; }
   .statusbar .sync .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 20%, transparent); }
 
@@ -114,7 +122,13 @@
         <span class="region">WA &middot; Google Weather</span>
       </div>
       <div class="right">
-        <span class="sync"><span class="dot"></span>Synced 2 min ago</span>
+        <button type="button" class="refresh-btn" title="Refresh now" aria-label="Refresh now">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13.5 8A5.5 5.5 0 1 1 11.8 4.1"/>
+            <path d="M13.7 2.5V5.5H10.7"/>
+          </svg>
+        </button>
+        <span class="sync"><span class="dot"></span><span id="syncedLabel">Synced 2 min ago</span></span>
         <span class="clock">14:32</span>
       </div>
     </div>
@@ -221,6 +235,10 @@
     if (!btn) return;
     toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
     device.setAttribute('data-theme', btn.dataset.mode);
+  });
+
+  document.querySelector('.refresh-btn').addEventListener('click', () => {
+    document.getElementById('syncedLabel').textContent = 'Synced just now';
   });
 </script>
 </body>

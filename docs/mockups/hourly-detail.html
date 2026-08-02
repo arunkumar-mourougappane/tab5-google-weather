@@ -16,6 +16,17 @@
   .statusbar h2 { font-size: 17px; font-weight: 700; margin: 0; }
   .statusbar .sub { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--sub); }
   .statusbar .clock { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 500; }
+  .statusbar .status-right { display: flex; align-items: center; gap: 14px; }
+  .statusbar .sync { display: flex; align-items: center; gap: 7px; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--sub); }
+  .statusbar .sync .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 20%, transparent); }
+  .refresh-btn {
+    display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    border: 1px solid var(--line-strong); border-radius: 999px; background: transparent;
+    cursor: pointer; color: var(--sub); padding: 0;
+  }
+  .refresh-btn:hover { border-color: var(--brass); color: var(--brass-strong); }
+  .refresh-btn:active svg { animation: refresh-spin 0.5s ease-in-out; }
+  @keyframes refresh-spin { to { transform: rotate(180deg); } }
 
   .chart-wrap { padding: 6px 26px 0; border-top: 1px solid var(--line); flex: 0 0 auto; }
   .chart-wrap svg { display: block; width: 100%; height: 168px; overflow: visible; }
@@ -64,7 +75,16 @@
           <div class="sub">BELLEVUE, WA</div>
         </div>
       </div>
-      <span class="clock">14:32</span>
+      <div class="status-right">
+        <button type="button" class="refresh-btn" title="Refresh now" aria-label="Refresh now">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13.5 8A5.5 5.5 0 1 1 11.8 4.1"/>
+            <path d="M13.7 2.5V5.5H10.7"/>
+          </svg>
+        </button>
+        <span class="sync"><span class="dot"></span><span id="syncedLabel">Synced 2 min ago</span></span>
+        <span class="clock">14:32</span>
+      </div>
     </div>
 
     <div class="chart-wrap">
@@ -171,6 +191,10 @@
     if (!btn) return;
     toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
     device.setAttribute('data-theme', btn.dataset.mode);
+  });
+
+  document.querySelector('.refresh-btn').addEventListener('click', () => {
+    document.getElementById('syncedLabel').textContent = 'Synced just now';
   });
 </script>
 </body>
