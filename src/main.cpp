@@ -24,6 +24,7 @@
 
 #include "boot_ui.h"
 #include "config_store.h"
+#include "daily_forecast_ui.h"
 #include "dashboard_ui.h"
 #include "display.h"
 #include "geocode.h"
@@ -438,11 +439,18 @@ void uiTaskFn(void *) {
       if (hourlyDetailScreenBuilt()) {
         showHourlyDetailScreen(lastDashboard);
       }
+      // Same guard, same reasoning, for the 7-Day-forecast screen.
+      if (dailyForecastScreenBuilt()) {
+        showDailyForecastScreen(lastDashboard);
+      }
       dashboardShown = true;
     } else if (dashboardShown) {
       refreshDashboardClock(lastDashboard);
       if (hourlyDetailScreenBuilt()) {
         refreshHourlyDetailClock(lastDashboard);
+      }
+      if (dailyForecastScreenBuilt()) {
+        refreshDailyForecastClock(lastDashboard);
       }
     }
 

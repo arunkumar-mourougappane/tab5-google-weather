@@ -11,6 +11,6 @@
 
 #include "weather_icon.h"
 
-enum class IconSize { Hero, DayRow, HourCard };
+enum class IconSize { Hero, DayRow, HourCard, Segment };
 
 const lv_image_dsc_t *iconForBucket(WeatherIconBucket bucket, IconSize size);

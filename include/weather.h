@@ -54,9 +54,20 @@ struct HourlyForecastPoint {
 struct DailyForecastPoint {
   String displayDate;
   WeatherCondition daytimeCondition;
+  WeatherCondition nighttimeCondition;
   float maxTemperature = 0.0f;
   float minTemperature = 0.0f;
-  int precipitationProbabilityPercent = 0;
+  int precipitationProbabilityPercent = 0;       // daytime pop - name kept
+                                                  // as-is, dashboard_ui.cpp
+                                                  // already reads it.
+  int nightPrecipitationProbabilityPercent = 0;
+  String sunriseTime;  // Raw RFC3339 UTC (e.g. "2026-08-01T11:15:00Z") -
+  String sunsetTime;   // only daily[0]'s ("today") is actually displayed
+                        // (daily_forecast_ui.cpp's sunbar), formatted to
+                        // local HH:MM at render time, same as the clock's
+                        // own "store raw, shift at display time" pattern.
+  String moonPhase;    // Raw enum, e.g. "WANING_GIBBOUS" - formatted to
+                        // sentence case at render time.
 };
 
 // Each fetch* call is a single-shot HTTPS request, same shape as

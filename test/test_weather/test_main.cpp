@@ -386,6 +386,16 @@ void test_daily_forecast_parses_without_overflow() {
   TEST_ASSERT_EQUAL_FLOAT(74.0f, first["maxTemperature"]["degrees"] | 0.0f);
   TEST_ASSERT_EQUAL_FLOAT(58.0f, first["minTemperature"]["degrees"] | 0.0f);
   TEST_ASSERT_EQUAL_STRING("representative-page-token-000", doc["nextPageToken"] | "");
+
+  // Day/night split + sun/moon events - confirms buildDailyForecastFilter()
+  // actually carries these through, not just the pre-existing daytime-only
+  // fields above.
+  TEST_ASSERT_EQUAL_STRING("CLEAR", first["nighttimeForecast"]["weatherCondition"]["type"] | "");
+  TEST_ASSERT_EQUAL_INT(20, first["daytimeForecast"]["precipitation"]["probability"]["percent"] | -1);
+  TEST_ASSERT_EQUAL_INT(5, first["nighttimeForecast"]["precipitation"]["probability"]["percent"] | -1);
+  TEST_ASSERT_EQUAL_STRING("2026-08-01T11:15:00Z", first["sunEvents"]["sunriseTime"] | "");
+  TEST_ASSERT_EQUAL_STRING("2026-08-02T01:20:00Z", first["sunEvents"]["sunsetTime"] | "");
+  TEST_ASSERT_EQUAL_STRING("WANING_GIBBOUS", first["moonEvents"]["moonPhase"] | "");
 }
 
 }  // namespace

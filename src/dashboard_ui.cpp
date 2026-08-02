@@ -6,6 +6,8 @@
 #include "dashboard_fonts.h"
 #include "dashboard_icon_lookup.h"
 #include "dashboard_icons.h"
+#include "daily_forecast_ui.h"
+#include "date_utils.h"
 #include "hourly_detail_ui.h"
 #include "logging.h"
 #include "weather_icon.h"
@@ -408,6 +410,13 @@ DayRowWidgets buildDayRow(lv_obj_t *parent, bool isFirst) {
   return w;
 }
 
+void onDailyTitleClicked(lv_event_t *e) {
+  LOG_D("ui", "daily title clicked, target=%p current_target=%p\n", static_cast<void *>(lv_event_get_target(e)),
+        static_cast<void *>(lv_event_get_current_target(e)));
+  showDailyForecastScreen(g_lastSnapshot);
+  lv_screen_load(dailyForecastScreenObj());
+}
+
 lv_obj_t *buildDailyColumn(lv_obj_t *parent) {
   lv_obj_t *col = makeColumn(parent);
   lv_obj_set_height(col, LV_PCT(100));
@@ -416,9 +425,34 @@ lv_obj_t *buildDailyColumn(lv_obj_t *parent) {
   lv_obj_set_style_pad_top(col, 20, 0);
   lv_obj_set_style_pad_bottom(col, 16, 0);
 
-  lv_obj_t *title = makeLabel(col, kSub, &font_plexmono_dailytitle_22);
+  // Same clickable-row + pill-button pattern as buildHourlyRow()'s
+  // titleRow/expandBtn - the pill is its own clickable target (press
+  // feedback scoped to it), titleRow stays clickable for taps elsewhere
+  // in the row.
+  lv_obj_t *titleRow = makeRow(col);
+  lv_obj_set_width(titleRow, LV_PCT(100));
+  lv_obj_set_style_pad_bottom(titleRow, 10, 0);
+  lv_obj_set_flex_align(titleRow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_add_flag(titleRow, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(titleRow, onDailyTitleClicked, LV_EVENT_CLICKED, nullptr);
+
+  lv_obj_t *title = makeLabel(titleRow, kSub, &font_plexmono_dailytitle_22);
   lv_label_set_text(title, "7-DAY OUTLOOK");
-  lv_obj_set_style_pad_bottom(title, 10, 0);
+
+  lv_obj_t *outlookBtn = lv_obj_create(titleRow);
+  lv_obj_set_size(outlookBtn, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(outlookBtn, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_color(outlookBtn, lv_color_hex(kLineStrong), 0);
+  lv_obj_set_style_border_width(outlookBtn, 1, 0);
+  lv_obj_set_style_radius(outlookBtn, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_pad_hor(outlookBtn, 12, 0);
+  lv_obj_set_style_pad_ver(outlookBtn, 6, 0);
+  lv_obj_clear_flag(outlookBtn, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(outlookBtn, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(outlookBtn, onDailyTitleClicked, LV_EVENT_CLICKED, nullptr);
+  addPressFeedback(outlookBtn);
+  lv_obj_t *outlook = makeLabel(outlookBtn, kSub, &font_plexmono_expand_22);
+  lv_label_set_text(outlook, "Outlook ->");
 
   // Grid, not a flex column - kMaxDayRows (7) equal LV_GRID_FR(1) rows
   // guarantee every row fits within whatever height this section ends up
@@ -659,28 +693,6 @@ uint32_t severityColor(float value, float moderateThreshold, float highThreshold
   return value >= highThreshold ? kEmber : value >= moderateThreshold ? kBrass : kTeal;
 }
 
-// Zeller's congruence - plain integer arithmetic on displayDate's
-// "YYYY-MM-DD" (see weather.cpp), no date/time library needed. Returns
-// 0=Sunday..6=Saturday, or -1 if isoDate isn't well-formed.
-int weekdayFromIsoDate(const String &isoDate) {
-  if (isoDate.length() != 10) {
-    return -1;
-  }
-  int year = isoDate.substring(0, 4).toInt();
-  int month = isoDate.substring(5, 7).toInt();
-  const int day = isoDate.substring(8, 10).toInt();
-  if (month < 3) {
-    month += 12;
-    year -= 1;
-  }
-  const int k = year % 100;
-  const int j = year / 100;
-  const int h = (day + (13 * (month + 1)) / 5 + k + k / 4 + j / 4 + 5 * j) % 7;
-  return (h + 6) % 7;  // Zeller's h is 0=Saturday - rotate to 0=Sunday.
-}
-
-const char *kWeekdayAbbrev[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-
 }  // namespace
 
 void showDashboardScreen(const SharedState::DashboardSnapshot &data) {
@@ -689,6 +701,15 @@ void showDashboardScreen(const SharedState::DashboardSnapshot &data) {
   const bool firstBuild = (g_screen == nullptr);
   if (firstBuild) {
     buildScreen();
+    // LV_MEM_SIZE usage right after this screen's own object tree is
+    // built - see that constant's own comment (lv_conf.h) for why this
+    // is being watched (a real hardware watchdog crash inside LVGL's
+    // draw code, first seen once all three screens were simultaneously
+    // resident).
+    lv_mem_monitor_t mon;
+    lv_mem_monitor(&mon);
+    LOG_D("ui", "lv mem after dashboard build: used=%u%% frag=%u%% free=%u\n", mon.used_pct, mon.frag_pct,
+          static_cast<unsigned>(mon.free_size));
   }
   LOG_D("ui", "showDashboardScreen called, firstBuild=%d screen=%p\n", firstBuild, static_cast<void *>(g_screen));
 
@@ -802,7 +823,7 @@ void showDashboardScreen(const SharedState::DashboardSnapshot &data) {
       const int weekday = weekdayFromIsoDate(day.displayDate);
       // Falls back to the raw "YYYY-MM-DD" if the API ever sends a
       // malformed date - still shows something rather than nothing.
-      lv_label_set_text(w.name, weekday >= 0 ? kWeekdayAbbrev[weekday] : day.displayDate.c_str());
+      lv_label_set_text(w.name, weekday >= 0 ? weekdayAbbrev(weekday) : day.displayDate.c_str());
       lv_obj_set_style_text_color(w.name, lv_color_hex(kInk), 0);
     }
 

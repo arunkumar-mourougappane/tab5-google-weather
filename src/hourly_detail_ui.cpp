@@ -170,10 +170,12 @@ lv_obj_t *buildStatusbar(lv_obj_t *parent) {
   lv_label_set_text(backLabel, "<- Dashboard");
 
   lv_obj_t *titleCol = makeColumn(back);
-  lv_obj_set_style_pad_row(titleCol, 2, 0);
+  // 7px, not 2px - the location sub-label sat too close under the title,
+  // per request.
+  lv_obj_set_style_pad_row(titleCol, 7, 0);
   lv_obj_t *title = makeLabel(titleCol, kInk, &font_archivo_hdtitle_26);
   lv_label_set_text(title, "Hourly forecast");
-  g_titleSub = makeLabel(titleCol, kSub, &font_plexmono_hdsub_16);
+  g_titleSub = makeLabel(titleCol, kSub, &font_plexmono_hdsub_18);
 
   g_clockLabel = makeLabel(bar, kInk, &font_plexmono_clock_20);
 
@@ -467,6 +469,11 @@ void showHourlyDetailScreen(const SharedState::DashboardSnapshot &data) {
   const bool firstBuild = (g_screen == nullptr);
   if (firstBuild) {
     buildScreen();
+    // See lv_conf.h's LV_MEM_SIZE comment for why this is being watched.
+    lv_mem_monitor_t mon;
+    lv_mem_monitor(&mon);
+    LOG_D("ui", "lv mem after hourly-detail build: used=%u%% frag=%u%% free=%u\n", mon.used_pct, mon.frag_pct,
+          static_cast<unsigned>(mon.free_size));
   }
   LOG_D("ui", "showHourlyDetailScreen called, firstBuild=%d screen=%p\n", firstBuild, static_cast<void *>(g_screen));
 

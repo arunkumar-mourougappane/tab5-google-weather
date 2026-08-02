@@ -28,9 +28,15 @@ extern const lv_font_t font_archivo_statusname_20;
 extern const lv_font_t font_archivo_dayname_14;
 extern const lv_font_t font_plexmono_backbtn_16;
 extern const lv_font_t font_archivo_hdtitle_26;
-extern const lv_font_t font_plexmono_hdsub_16;
+extern const lv_font_t font_plexmono_hdsub_18;
 extern const lv_font_t font_plexmono_legend_14;
 extern const lv_font_t font_plexmono_hcardtime_14;
 extern const lv_font_t font_plexmono_hcardtemp_26;
 extern const lv_font_t font_plexmono_hcardpop_18;
+extern const lv_font_t font_plexmono_headcol_14;
+extern const lv_font_t font_plexmono_dailydate_16;
+extern const lv_font_t font_archivo_dailydesc_18;
+extern const lv_font_t font_plexmono_segtemp_20;
+extern const lv_font_t font_plexmono_segpop_16;
+extern const lv_font_t font_plexmono_sunbar_16;
 

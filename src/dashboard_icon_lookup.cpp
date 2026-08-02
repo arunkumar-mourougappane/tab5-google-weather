@@ -21,6 +21,11 @@ const lv_image_dsc_t *iconForBucket(WeatherIconBucket bucket, IconSize size) {
       &windy_hcard,     &light_rain_hcard,   &rain_hcard,          &heavy_rain_hcard, &snow_hcard,
       &sleet_hcard,     &hail_hcard,         &thunderstorm_hcard,  &fog_hcard,        &moon_hcard,
   };
+  static const lv_image_dsc_t *const kSegment[] = {
+      &sun_segment,       &mostly_clear_segment, &partly_cloudy_segment, &cloud_segment,      &night_cloudy_segment,
+      &windy_segment,     &light_rain_segment,   &rain_segment,          &heavy_rain_segment, &snow_segment,
+      &sleet_segment,     &hail_segment,         &thunderstorm_segment,  &fog_segment,        &moon_segment,
+  };
   const size_t index = static_cast<size_t>(bucket);
   switch (size) {
     case IconSize::Hero:
@@ -29,6 +34,8 @@ const lv_image_dsc_t *iconForBucket(WeatherIconBucket bucket, IconSize size) {
       return kDayRow[index];
     case IconSize::HourCard:
       return kHourCard[index];
+    case IconSize::Segment:
+      return kSegment[index];
   }
   return kDayRow[index];
 }

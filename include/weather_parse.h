@@ -66,7 +66,12 @@ inline void buildDailyForecastFilter(JsonDocument &filter) {
   day["displayDate"]["month"] = true;
   day["displayDate"]["day"] = true;
   filterWeatherCondition(day["daytimeForecast"]["weatherCondition"].to<JsonObject>());
+  filterWeatherCondition(day["nighttimeForecast"]["weatherCondition"].to<JsonObject>());
   day["maxTemperature"]["degrees"] = true;
   day["minTemperature"]["degrees"] = true;
   day["daytimeForecast"]["precipitation"]["probability"]["percent"] = true;
+  day["nighttimeForecast"]["precipitation"]["probability"]["percent"] = true;
+  day["sunEvents"]["sunriseTime"] = true;
+  day["sunEvents"]["sunsetTime"] = true;
+  day["moonEvents"]["moonPhase"] = true;
 }

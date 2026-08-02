@@ -95,7 +95,11 @@ font_plexmono_title_11|docs/mockups/assets/fonts/plexmono-400.woff2|11|ABCDEFGHI
 # the footer text) so only the "EXPAND ->" tap affordance grows. Started
 # at 26px to match the weather-condition text's size, dialed back to 22px
 # per request.
-font_plexmono_expand_22|docs/mockups/assets/fonts/plexmono-400.woff2|22|Expand ->|0
+# Shared by the Dashboard's "Expand ->" (Hourly) and "Outlook ->" (Daily)
+# pill buttons - subset covers both exactly (not a generic full-alphabet
+# subset) to catch any future case/character mismatch the same way this
+# one did before being widened.
+font_plexmono_expand_22|docs/mockups/assets/fonts/plexmono-400.woff2|22|ExpandOutlok ->|0
 # 16px, not 11px - split off from font_plexmono_title_11 (still used by
 # the footer text) so only the "HOURLY · NEXT 8 HOURS" section title
 # grows, same readability pass as the hour cells and the daily title.
@@ -141,7 +145,12 @@ font_plexmono_backbtn_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|ABCDEFG
 # simplification already used for the Dashboard's other Archivo headings
 # (font_archivo_statusname_20 etc.) - no hand-picked bold weight axis
 # value even though the mockup's h2 is font-weight 700.
-font_archivo_hdtitle_26|docs/mockups/assets/fonts/archivo-variable.woff2|26|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz |0
+# Digits+hyphen added for the 7-Day-forecast screen's "7-day outlook"
+# title (daily_forecast_ui.cpp reuses this font verbatim) - the
+# original letters-only subset covered Hourly-detail's "Hourly
+# forecast" fine but silently dropped "7" and "-" here, same font-
+# subset bug class this project has hit twice before.
+font_archivo_hdtitle_26|docs/mockups/assets/fonts/archivo-variable.woff2|26|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -|0
 # 16px, not 14px. Full upper+lower, not uppercase-only - a real bug in
 # an earlier version: the code never actually uppercased displayLocation
 # (mixed case, e.g. "Dunlap, IL" - same field the Dashboard's own
@@ -149,7 +158,10 @@ font_archivo_hdtitle_26|docs/mockups/assets/fonts/archivo-variable.woff2|26|ABCD
 # case, not force-uppercased), so lowercase letters had no glyph and
 # silently failed to render. Matches that existing convention instead of
 # introducing a new uppercase-then-display rule.
-font_plexmono_hdsub_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ,.|0
+# 18px, not 16px - the location sub-label read too small/close under the
+# title per request; shared by both Hourly-detail and 7-Day-forecast
+# (both reuse this font verbatim, same statusbar shape).
+font_plexmono_hdsub_18|docs/mockups/assets/fonts/plexmono-400.woff2|18|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ,.|0
 # 14px, not 11px - the chart legend's "Temperature"/"Precipitation
 # chance" labels.
 font_plexmono_legend_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz |0
@@ -168,3 +180,36 @@ font_plexmono_hcardtemp_26|docs/mockups/assets/fonts/plexmono-500.woff2|26|01234
 # to the bottom of the hour card (space-between layout, away from the
 # time/icon/temp group) rather than sitting right under the temperature.
 font_plexmono_hcardpop_18|docs/mockups/assets/fonts/plexmono-400.woff2|18|0123456789%|0
+
+# --- 7-Day-forecast screen (docs/mockups/daily-forecast.html) ---
+# Statusbar reuses Hourly-detail's font_plexmono_backbtn_16/
+# font_archivo_hdtitle_26/font_plexmono_hdsub_18/font_plexmono_clock_20
+# verbatim - both screens share the exact same statusbar shape and the
+# same displayLocation text, so no new fonts needed there.
+#
+# Every font below uses a full alnum(+punctuation) subset rather than a
+# narrow one, even where a narrower one would technically fit today -
+# this screen renders more free-form API text (condition descriptions,
+# moon phase names) than any prior screen, and the case-mismatch/missing-
+# glyph bug hit twice already this session (hdsub_16 above, and the
+# "Expand"/"Outlook" shared pill font) both came from a subset that was
+# narrower than what the code actually rendered. Sizes start bumped up
+# from the mockup's own raw px, same "start bigger, hardware confirms"
+# lesson as every other screen this session.
+# 14px, not the mockup's 15px .head-row - column headers ("Day",
+# "Condition", "Day", "Night", "Range").
+font_plexmono_headcol_14|docs/mockups/assets/fonts/plexmono-400.woff2|14|ABCDEFGHIJKLMNOPQRSTUVWXYZ |0
+# 16px, not the mockup's 10.5px .dname .date ("Jul 26").
+font_plexmono_dailydate_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 |0
+# 18px, not the mockup's 12.5px .cond .label - condition description
+# text ("Partly Cloudy", "Showers", ...), Archivo not Plex Mono to match
+# the Dashboard's own condition-label convention (font_archivo_condition_26).
+font_archivo_dailydesc_18|docs/mockups/assets/fonts/archivo-variable.woff2|18|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz |0
+# 20px, not the mockup's 12px .segment .seg-temp.
+font_plexmono_segtemp_20|docs/mockups/assets/fonts/plexmono-500.woff2|20|0123456789°|0
+# 16px, not the mockup's 10.5px .segment .seg-pop.
+font_plexmono_segpop_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|0123456789%|0
+# 16px, not the mockup's 11px .sunbar - sunrise/sunset time + moon phase
+# name + API attribution line, hence the wide subset (colon for "5:52",
+# middot/slash/period for the attribution line).
+font_plexmono_sunbar_16|docs/mockups/assets/fonts/plexmono-400.woff2|16|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ·./:-|0

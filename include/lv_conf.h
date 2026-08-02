@@ -8,7 +8,18 @@
 
 #define LV_COLOR_DEPTH 16
 
-#define LV_MEM_SIZE (128U * 1024U)
+/* 256KB, not 128KB - bumped after a real hardware watchdog crash mid-
+ * navigation (uiTask stuck inside lv_draw_unit_draw_letter during a
+ * Dashboard redraw) the first time three full screens' worth of LVGL
+ * objects (Dashboard + Hourly-detail + Daily-forecast, all built once
+ * and kept alive forever - see each screen's own showXScreen() comment)
+ * were simultaneously resident, on top of this project's now-35-strong
+ * dashboard font set. Plenty of free DIRAM headroom for this (~300KB+
+ * free per `pio run -e tab5`'s own memory summary) - not yet confirmed
+ * against real lv_mem_monitor() numbers (each screen's showXScreen()
+ * now logs them on first build), so this may still need re-tuning once
+ * those come back from hardware. */
+#define LV_MEM_SIZE (256U * 1024U)
 
 /* We drive lv_tick_inc() ourselves from millis(), see src/main.cpp. */
 #define LV_TICK_CUSTOM 0

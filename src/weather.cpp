@@ -180,9 +180,15 @@ void appendDailyPoints(JsonArrayConst days, DailyForecastPoint out[kMaxDailyPoin
     snprintf(dateBuf, sizeof(dateBuf), "%04d-%02d-%02d", year, month, dayOfMonth);
     point.displayDate = dateBuf;
     point.daytimeCondition = parseCondition(day["daytimeForecast"]["weatherCondition"]);
+    point.nighttimeCondition = parseCondition(day["nighttimeForecast"]["weatherCondition"]);
     point.maxTemperature = day["maxTemperature"]["degrees"] | 0.0f;
     point.minTemperature = day["minTemperature"]["degrees"] | 0.0f;
     point.precipitationProbabilityPercent = day["daytimeForecast"]["precipitation"]["probability"]["percent"] | 0;
+    point.nightPrecipitationProbabilityPercent =
+        day["nighttimeForecast"]["precipitation"]["probability"]["percent"] | 0;
+    point.sunriseTime = day["sunEvents"]["sunriseTime"] | "";
+    point.sunsetTime = day["sunEvents"]["sunsetTime"] | "";
+    point.moonPhase = day["moonEvents"]["moonPhase"] | "";
   }
 }
 
