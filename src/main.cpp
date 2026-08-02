@@ -20,6 +20,7 @@
 #include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <lvgl.h>
 #include <time.h>
 
 #include "boot_ui.h"
@@ -40,6 +41,14 @@ namespace {
 ConfigStore configStore;
 SharedState sharedState;
 
+// Captured at task creation (see setup()) so endurance-mode logging can
+// query each task's own stack high-water mark - xTaskCreatePinnedToCore's
+// handle-out param was unused (nullptr) before ENDURANCE_TEST needed it.
+// Harmless to always capture, so this isn't behind #ifdef ENDURANCE_TEST
+// itself - only logEnduranceStats() below is.
+TaskHandle_t g_uiTaskHandle = nullptr;
+TaskHandle_t g_netTaskHandle = nullptr;
+
 // Diagnostic, kept permanently rather than ripped out post-investigation:
 // helped rule out uiTaskFn/netTaskFn's own stack allocations as the cause
 // of a since-identified SDIO driver assert (see docs/hardware.md's
@@ -52,6 +61,38 @@ void logHeapStats(const char *label) {
   LOG_D("heap", "%s: free=%u largest_internal=%u largest_dma=%u\n", label, ESP.getFreeHeap(),
         heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
 }
+
+#ifdef ENDURANCE_TEST
+// One structured line per screen-cycle tick, all key=value tokens (no
+// prose) - built for a script tailing serial over a long unattended run
+// to grep/parse, not for a human reading along live. Deliberately not
+// folded into logHeapStats() above: that one fires at a handful of fixed
+// one-off points (task/boot start), this fires continuously for as long
+// as the device runs, and the two audiences (a person skimming boot
+// logs vs. a script parsing days of output) want different shapes.
+//
+// uxTaskGetStackHighWaterMark() returns the *minimum* free stack ever
+// observed for that task since it started, in words - multiplying by
+// sizeof(StackType_t) converts to bytes, matching how each task's own
+// stack size (xTaskCreatePinnedToCore's own 3rd arg, see setup()) is
+// already expressed in this codebase, so the two numbers are directly
+// comparable at a glance.
+void logEnduranceStats(const char *screenName, uint32_t cycleCount) {
+  lv_mem_monitor_t mon;
+  lv_mem_monitor(&mon);
+  const uint32_t uiStackFreeBytes =
+      g_uiTaskHandle ? uxTaskGetStackHighWaterMark(g_uiTaskHandle) * sizeof(StackType_t) : 0;
+  const uint32_t netStackFreeBytes =
+      g_netTaskHandle ? uxTaskGetStackHighWaterMark(g_netTaskHandle) * sizeof(StackType_t) : 0;
+  LOG_I("endurance",
+        "cycle=%u screen=%s free_heap=%u largest_internal=%u largest_dma=%u "
+        "ui_stack_min_free=%u net_stack_min_free=%u "
+        "lv_mem_used_pct=%u lv_mem_frag_pct=%u lv_mem_free=%u\n",
+        cycleCount, screenName, ESP.getFreeHeap(), heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+        heap_caps_get_largest_free_block(MALLOC_CAP_DMA), uiStackFreeBytes, netStackFreeBytes, mon.used_pct,
+        mon.frag_pct, static_cast<unsigned>(mon.free_size));
+}
+#endif
 
 // A boot-time system clock that already reads as a real date (not the
 // 1970 epoch, or close to it, that an unset clock shows) means an
@@ -117,8 +158,13 @@ void connectWifiOrRetryBoot() {
   // failures shouldn't mean WiFi itself is bad. Logging this here (and
   // again in logWifiState() below, before each fetch) makes that visible
   // in the log instead of having to infer it.
-  LOG_I("net", "WiFi connected: ssid=%s ip=%s rssi=%d dBm\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str(),
-        WiFi.RSSI());
+  // MAC read here, not earlier in setup() - this board's WiFi radio lives
+  // on the separate ESP32-C6 co-processor, bridged over SDIO (esp-hosted,
+  // see docs/hardware.md), not on the P4 itself. The MAC isn't guaranteed
+  // readable until that link is actually up, which WL_CONNECTED above
+  // already confirms.
+  LOG_I("net", "WiFi connected: ssid=%s ip=%s mac=%s rssi=%d dBm\n", WiFi.SSID().c_str(),
+        WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(), WiFi.RSSI());
 }
 
 // NTP sync, once, right after WiFi comes up — purely so log timestamps
@@ -454,6 +500,44 @@ void uiTaskFn(void *) {
       }
     }
 
+#ifdef ENDURANCE_TEST
+    // Cycles Dashboard -> Hourly -> Daily -> Dashboard -> ... on a fixed
+    // timer, calling the same show*Screen()+lv_screen_load() pairs the
+    // real tap handlers call (onHourlyTitleClicked()/onDailyTitleClicked()/
+    // onBackClicked()), not a synthetic touch event. Gated on
+    // dashboardShown - waits for the first real snapshot, same guard the
+    // rest of this loop already uses, rather than cycling into screens
+    // built from a default-constructed (all-zero) DashboardSnapshot.
+    // netTaskFn's own refresh loop above is completely untouched - this
+    // only forces navigation, not fetch cadence.
+    if (dashboardShown) {
+      static uint32_t lastCycleMs = 0;
+      static int cycleScreen = 0;
+      static uint32_t cycleCount = 0;
+      constexpr uint32_t kCycleIntervalMs = 12000;
+      const uint32_t now = millis();
+      if (now - lastCycleMs >= kCycleIntervalMs) {
+        lastCycleMs = now;
+        cycleScreen = (cycleScreen + 1) % 3;
+        const char *screenName;
+        if (cycleScreen == 0) {
+          screenName = "dashboard";
+          lv_screen_load(dashboardScreenObj());
+        } else if (cycleScreen == 1) {
+          screenName = "hourly";
+          showHourlyDetailScreen(lastDashboard);
+          lv_screen_load(hourlyDetailScreenObj());
+        } else {
+          screenName = "daily";
+          showDailyForecastScreen(lastDashboard);
+          lv_screen_load(dailyForecastScreenObj());
+        }
+        cycleCount++;
+        logEnduranceStats(screenName, cycleCount);
+      }
+    }
+#endif
+
     delay(5);
   }
 }
@@ -462,6 +546,16 @@ void uiTaskFn(void *) {
 
 void setup() {
   Serial.begin(115200);
+
+  // Logged first, before anything else - a factory-programmed eFuse read
+  // on the P4 itself, so unlike the WiFi MAC logged later in
+  // connectWifiOrRetryBoot() (which lives on the separate ESP32-C6
+  // co-processor and isn't valid until that SDIO link is up), this
+  // doesn't depend on WiFi/provisioning/anything at all. Same source
+  // provisioning.cpp's apSsid() uses for the AP name during first-run
+  // setup, so this log line and the AP name a person sees are the same
+  // underlying ID.
+  LOG_I("main", "P4 eFuse chip ID: %012llX\n", ESP.getEfuseMac());
 
   // Checked immediately, independent of WiFi/provisioning below — if an
   // earlier session's NTP sync survived this reset (see
@@ -502,7 +596,7 @@ void setup() {
   // rendering the hero temp font at 240px; LVGL's RLE decompression for
   // large compressed glyphs needs more of this task's stack than a
   // smaller/uncompressed font does. Matches netTask's existing size.
-  xTaskCreatePinnedToCore(uiTaskFn, "uiTask", 16384, nullptr, 1, nullptr, 0);
+  xTaskCreatePinnedToCore(uiTaskFn, "uiTask", 16384, nullptr, 1, &g_uiTaskHandle, 0);
   // 28672, not 24576 - kWeatherJsonArenaBytes (weather_parse.h) grew
   // again, 12288 to 16384 (a CI-only native-test arena overflow fix, not
   // a real 32-bit-target requirement, but it's the same shared constant
@@ -511,7 +605,7 @@ void setup() {
   // (previously 2x/50% used, now kept above 1.75x) rather than letting
   // the ratio silently shrink - same proactive reasoning as the last
   // bump above.
-  xTaskCreatePinnedToCore(netTaskFn, "netTask", 28672, nullptr, 1, nullptr, 1);
+  xTaskCreatePinnedToCore(netTaskFn, "netTask", 28672, nullptr, 1, &g_netTaskHandle, 1);
 
   // Nothing left for the default Arduino task to do — uiTask/netTask above
   // own everything from here. Deletes itself rather than falling through

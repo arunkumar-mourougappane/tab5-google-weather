@@ -34,11 +34,20 @@ String g_apSsid;
 lv_obj_t *g_waitingScreen = nullptr;
 lv_obj_t *g_successScreen = nullptr;
 
+// Suffixed with the P4's own eFuse-burned chip ID (ESP.getEfuseMac()),
+// not WiFi.macAddress() - on this board the WiFi radio lives on the
+// separate ESP32-C6 co-processor, bridged over SDIO (esp-hosted, see
+// docs/hardware.md), not on the P4 itself. The eFuse ID is the actual
+// hardware-unique identifier of the chip running this code, doesn't
+// depend on the C6 link being up at all, and is what setup() logs at
+// boot (see main.cpp) - using the same source here means the AP name a
+// person sees during setup and the ID in the boot log are the same
+// number. Only the low 16 bits are used - just needs to differ between
+// nearby devices, not to be read back as a real MAC address.
 String apSsid() {
-  uint8_t mac[6];
-  WiFi.macAddress(mac);
+  const uint64_t chipId = ESP.getEfuseMac();
   char buf[24];
-  snprintf(buf, sizeof(buf), "Tab5-Weather-%02X%02X", mac[4], mac[5]);
+  snprintf(buf, sizeof(buf), "Tab5-Weather-%04X", static_cast<unsigned>(chipId & 0xFFFF));
   return String(buf);
 }
 

@@ -1,0 +1,18 @@
+# Python dependencies for tools/*.py - not needed to build or flash the
+# firmware itself (that's PlatformIO's own dependencies, see
+# platformio.ini), just for the dev-tool scripts in this directory.
+# Install with: pip3 install -r tools/requirements.txt
+
+# analyze_endurance_log.py --serial (live mode only - offline --input
+# parsing needs neither this nor matplotlib below, just the stdlib).
+pyserial>=3.5
+
+# analyze_endurance_log.py's plot generation - optional at runtime (the
+# script detects a missing install and skips plotting with a clear
+# message, CSVs still get written either way), but required to actually
+# get the PNGs out of a captured run.
+matplotlib>=3.5
+
+# png_to_lvgl_image.py - PNG decoding for the PNG-to-lv_image_dsc_t
+# converter.
+Pillow>=9.0

@@ -50,8 +50,8 @@
   .hilo .sep { color: var(--line-strong); }
 
   /* ---- Instrument gauge tiles ---- */
-  .gauge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex: 1 1 auto; }
-  .gauge-tile { background: var(--panel); padding: 12px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .gauge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px 22px; flex: 1 1 auto; }
+  .gauge-tile { padding: 4px 6px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 
   /* Ring gauge overlay (Pollen's tiles) - a ringGauge()
      SVG plus a centered icon on top. */
@@ -92,7 +92,12 @@
   .moon-panel .phase-name { font-size: 13.5px; font-weight: 600; margin-top: 2px; }
 
   /* ---- Air quality / pollen panels ---- */
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  /* No box underlay - variant explored per request: panels used to carry
+     their own background/border (var(--panel), 1px var(--line)); now
+     each element sits directly on the page background. The circular
+     gauges' own disc-bg (still var(--panel-2)) stays - that's the
+     instrument face itself, not a generic layout container. */
+  .panel { padding: 16px 18px; }
   .panel .head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
   .panel .head .title { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sub); }
   .panel .head .src { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: var(--sub); opacity: 0.75; }

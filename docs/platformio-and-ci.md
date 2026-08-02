@@ -241,6 +241,44 @@ Run locally with `pio test -e native` / `pio test -e tab5-test` (the latter
 needs a Tab5 connected over USB); `pio test -e native -f test_weather` (or
 any single suite name) runs just one.
 
+## Endurance testing
+
+`[env:tab5-endurance]` — the real firmware (`extends = env:tab5`, same
+`src/`/`lib_deps`) plus `-DENDURANCE_TEST=1`, which compiles in a
+screen-cycling timer and structured memory logging that don't exist in
+the normal `[env:tab5]` build at all (confirmed: identical flash size
+with/without the flag). Built for a long, unattended soak run — hours to
+days connected to a machine tailing serial — to catch a slow heap/stack
+leak or LVGL memory fragmentation that a short manual test session would
+never surface.
+
+- **Screen cycling** (`uiTaskFn` in `main.cpp`): every 12s, cycles
+  Dashboard → Hourly → Daily → Dashboard → …, calling the same
+  `show*Screen()`/`lv_screen_load()` pairs the real tap handlers use, not
+  a synthetic touch event. Real weather refreshes (`netTaskFn`'s normal
+  10-minute cycle) are completely untouched — this only forces UI
+  navigation, exercising repeated screen build/redraw far more than a
+  person tapping through it ever would.
+- **Logging** (`logEnduranceStats()` in `main.cpp`): one `key=value`
+  line per cycle, tagged `endurance` — free heap, largest internal/DMA
+  block (same fields `logHeapStats()` already logs at boot), each task's
+  own stack high-water mark (`uxTaskGetStackHighWaterMark()` — the
+  *minimum* free stack ever observed since boot, first use of this API
+  anywhere in this codebase), and LVGL's internal memory pool usage
+  (`lv_mem_monitor()`, already used once per screen's first build
+  elsewhere — logged every cycle here instead of just once).
+- **`tools/analyze_endurance_log.py`** — parses a live serial capture or
+  an already-saved log file into one CSV per log tag (not just
+  `endurance` — generically extracts `key=value` pairs from any tagged
+  line this project's `LOG_*` macros produce) and, if `matplotlib` is
+  installed, a time-series PNG per numeric field. `pip3 install -r
+  tools/requirements.txt` first (`pyserial` for live capture,
+  `matplotlib` for plots — both optional at runtime; the script degrades
+  to CSV-only with a clear message if either is missing).
+
+Run with `pio run -e tab5-endurance -t upload`, not part of CI (this is a
+manual, hardware-in-the-loop diagnostic tool, not a pass/fail check).
+
 ## GitHub Actions
 
 PlatformIO's own recommended workflow, adapted with `pio run -e tab5` plus
