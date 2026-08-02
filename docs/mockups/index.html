@@ -57,12 +57,12 @@
 <div class="intro">
   <p class="eyebrow">Tab5 &middot; Google Weather</p>
   <h1>Screen mockups</h1>
-  <p>Six screens covering the full loop a wall-mounted weather kiosk needs: first-run setup, the default dashboard, two detail drill-downs, the states that show up when things go wrong, and a severe-alert takeover. Click any card to open it full-size and interactive (day/night toggle included).</p>
+  <p>Seven screens covering the full loop a wall-mounted weather kiosk needs: first-run setup, the default dashboard, three detail drill-downs, the states that show up when things go wrong, and a severe-alert takeover. Click any card to open it full-size and interactive (day/night toggle included).</p>
 </div>
 
 <div class="gallery" id="gallery"></div>
 
-<p class="caption">All six share one design system &mdash; <code>assets/style.css</code> &mdash; so a token change (palette, type scale) here previews consistently everywhere at once. See <a href="https://github.com/arunkumar-mourougappane/tab5-google-weather/blob/main/docs/rendering.md">docs/rendering.md</a> for how this maps to actual LVGL widgets.</p>
+<p class="caption">All seven share one design system &mdash; <code>assets/style.css</code> &mdash; so a token change (palette, type scale) here previews consistently everywhere at once. See <a href="https://github.com/arunkumar-mourougappane/tab5-google-weather/blob/main/docs/rendering.md">docs/rendering.md</a> for how this maps to actual LVGL widgets.</p>
 
 <script>
   const screens = [
@@ -72,6 +72,7 @@
     { n: "4", file: "status.html", title: "Boot / sync / offline", desc: "Wi-Fi connect, first fetch, and graceful offline fallback to stale data." },
     { n: "5", file: "alert.html", title: "Severe alert", desc: "Alert banner overlays the dimmed dashboard rather than replacing it." },
     { n: "6", file: "provisioning.html", title: "First-run provisioning", desc: "The device's own AP + setup screen, and the phone-facing setup page it serves." },
+    { n: "7", file: "current-detail.html", title: "Current conditions detail", desc: "Pressure, visibility, dew point, air quality, and pollen, reached by tapping the Dashboard's hero reading." },
   ];
   const gallery = document.getElementById('gallery');
   screens.forEach(s => {

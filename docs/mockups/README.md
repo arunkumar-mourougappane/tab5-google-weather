@@ -13,6 +13,7 @@ Not firmware; these are the design reference the LVGL implementation follows
 | 4. Boot / sync / offline | `status.html` | Connecting, first fetch, offline fallback to stale data |
 | 5. Severe alert | `alert.html` | Alert banner over the dimmed dashboard |
 | 6. First-run provisioning | `provisioning.html` | The device's own AP + setup screen, and the phone-facing setup page it serves |
+| 7. Current conditions detail | `current-detail.html` | Full instrument panel for "now": pressure, visibility, dew point, air quality, pollen, drilled into from the Dashboard's hero reading |
 
 All screens share `assets/style.css` and the two embedded typefaces in
 `assets/fonts/` (Archivo for display type, IBM Plex Mono for all numeric/data
@@ -23,4 +24,6 @@ browser's OS theme.
 
 Real content throughout (Bellevue, WA sample data shaped like actual
 `weather.googleapis.com` responses — see [../google-weather-api.md](../google-weather-api.md))
-rather than placeholder lorem ipsum.
+rather than placeholder lorem ipsum. Screen 7's air quality/pollen data is
+similarly realistic but sourced from two APIs not yet implemented in
+firmware — see [../environmental-apis.md](../environmental-apis.md).

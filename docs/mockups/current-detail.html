@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tab5 Weather — Current Conditions Detail</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .statusbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 30px 10px; flex: 0 0 auto; }
+  .statusbar .back { display: flex; align-items: center; gap: 12px; }
+  .statusbar .back-btn {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.04em;
+    color: var(--sub); text-decoration: none; display: flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 12px 6px 10px;
+  }
+  .statusbar h2 { font-size: 17px; font-weight: 700; margin: 0; }
+  .statusbar .sub { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--sub); margin-top: 3px; }
+  .statusbar .clock { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 500; }
+
+  .body { flex: 1 1 auto; display: grid; grid-template-columns: 1.35fr 1fr; gap: 0; min-height: 0; border-top: 1px solid var(--line); }
+  .left { padding: 18px 26px 16px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+  .right { padding: 18px 24px 16px; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+
+  /* ---- Hero ---- */
+  .hero { display: flex; align-items: center; gap: 22px; }
+  .hero .glyph svg { display: block; }
+  .hero .reading { display: flex; flex-direction: column; gap: 2px; }
+  .hero .temp {
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 64px;
+    line-height: 0.95; letter-spacing: -0.02em; display: flex; align-items: flex-start;
+  }
+  .hero .temp .deg { font-size: 26px; margin-top: 4px; color: var(--brass-strong); }
+  .hero .condition { font-size: 17px; font-weight: 600; margin-top: 2px; }
+  .hero .feels { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--sub); margin-top: 2px; }
+  .hilo { display: flex; gap: 18px; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+  .hilo .hi { color: var(--ember); }
+  .hilo .lo { color: var(--teal); }
+  .hilo .sep { color: var(--line-strong); }
+
+  /* ---- Instrument tiles ---- */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex: 1 1 auto; }
+  .tile { background: var(--panel); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+  .tile .top { display: flex; align-items: center; gap: 8px; }
+  .tile .top svg { flex: 0 0 auto; opacity: 0.85; }
+  .tile .label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sub); }
+  .tile .value { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 500; }
+  .tile .value span { font-size: 12.5px; color: var(--sub); font-weight: 400; margin-left: 2px; }
+  .tile .sub { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--sub); }
+  .tile .value.sev-low { color: var(--teal); }
+  .tile .value.sev-moderate { color: var(--brass); }
+  .tile .value.sev-high { color: var(--ember); }
+
+  /* ---- Air quality / pollen panels ---- */
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .panel .head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+  .panel .head .title { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sub); }
+  .panel .head .src { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: var(--sub); opacity: 0.75; }
+
+  .aqi-row { display: flex; align-items: center; gap: 16px; }
+  .aqi-num { font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 40px; line-height: 1; }
+  .aqi-meta { display: flex; flex-direction: column; gap: 4px; }
+  .aqi-pill {
+    display: inline-flex; align-items: center; font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 0.04em; padding: 3px 10px; border-radius: 999px; width: fit-content;
+  }
+  .aqi-dominant { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--sub); }
+  .aqi-scale { position: relative; height: 6px; border-radius: 3px; margin-top: 12px;
+    background: linear-gradient(90deg, var(--teal) 0%, var(--brass) 45%, var(--ember) 100%); }
+  .aqi-scale .marker { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--ink); border-radius: 1px; }
+
+  .pollen-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .pollen-row:first-of-type { border-top: none; padding-top: 0; }
+  .pollen-row .name { font-size: 13px; font-weight: 600; width: 58px; flex: 0 0 auto; }
+  .pollen-bar { position: relative; height: 6px; flex: 1 1 auto; background: var(--line); border-radius: 3px; }
+  .pollen-bar .fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 3px; }
+  .pollen-cat { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; width: 68px; text-align: right; flex: 0 0 auto; }
+
+  .footer { margin-top: auto; padding-top: 8px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--sub); letter-spacing: 0.03em; }
+</style>
+</head>
+<body>
+
+<p class="crumbs"><a href="index.html">&larr; All mockups</a> &middot; 7 of 7 &middot; Current conditions detail</p>
+
+<div class="intro">
+  <p class="eyebrow">Tab5 &middot; Google Weather &mdash; Screen 7</p>
+  <h1>Current conditions, in full</h1>
+  <p>Reached by tapping the Dashboard's own "now" reading (icon/temp/condition), same drill-down affordance as Hourly and 7-Day Outlook. Surfaces everything the Dashboard's compact 4-metric grid leaves out: pressure, visibility, dew point, plus air quality and pollen &mdash; two data points Google's Weather API doesn't provide at all, sourced from separate Air Quality and Pollen APIs (see <a href="../environmental-apis.md">environmental-apis.md</a> for the research behind this, including why those two aren't implemented in firmware yet).</p>
+</div>
+
+<div class="stage-controls">
+  <span>Display mode</span>
+  <div class="toggle" role="group" aria-label="Day or night preview">
+    <button type="button" class="active" data-mode="light">Day</button>
+    <button type="button" data-mode="dark">Night</button>
+  </div>
+</div>
+
+<div class="device" id="device">
+  <div class="screen">
+
+    <div class="statusbar">
+      <div class="back">
+        <a class="back-btn" href="dashboard.html">&larr; Dashboard</a>
+        <div>
+          <h2>Current conditions</h2>
+          <div class="sub">BELLEVUE, WA</div>
+        </div>
+      </div>
+      <span class="clock">14:32</span>
+    </div>
+
+    <div class="body">
+      <div class="left">
+        <div>
+          <div class="hero">
+            <div class="glyph">
+              <svg width="64" height="64" viewBox="0 0 86 86" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="34" cy="36" r="15" stroke="var(--brass)" stroke-width="2.5"/>
+                <g stroke="var(--brass)" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="34" y1="10" x2="34" y2="4"/>
+                  <line x1="52" y1="18" x2="56" y2="14"/>
+                  <line x1="14" y1="18" x2="10" y2="14"/>
+                </g>
+                <path d="M20 62C13 62 8 57 8 51C8 45.2 12.5 40.5 18.1 40C20 33.7 25.9 29 33 29C41 29 47.6 34.9 48.7 42.6C55.6 43.4 61 49.1 61 56C61 62.6 55.6 68 49 68H21" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="reading">
+              <div class="temp">68<span class="deg">&deg;F</span></div>
+              <div class="condition">Partly Cloudy</div>
+              <div class="feels">REAL FEEL 66&deg; &middot; AS OF 14:30</div>
+            </div>
+          </div>
+          <div class="hilo" style="margin-top: 10px;">
+            <span class="hi">&#9650; 74&deg; HIGH</span>
+            <span class="sep">/</span>
+            <span class="lo">&#9660; 58&deg; LOW</span>
+          </div>
+        </div>
+
+        <div class="tiles" id="tiles"></div>
+      </div>
+
+      <div class="right">
+        <div class="panel">
+          <div class="head"><span class="title">Air Quality</span><span class="src">airquality.googleapis.com</span></div>
+          <div class="aqi-row">
+            <div class="aqi-num" style="color: var(--brass);">62</div>
+            <div class="aqi-meta">
+              <span class="aqi-pill" style="background: color-mix(in srgb, var(--brass) 22%, transparent); color: var(--brass-strong);">Moderate</span>
+              <span class="aqi-dominant">Main pollutant: PM2.5</span>
+            </div>
+          </div>
+          <div class="aqi-scale"><div class="marker" style="left: 31%;"></div></div>
+        </div>
+
+        <div class="panel" style="flex: 1 1 auto;">
+          <div class="head"><span class="title">Pollen</span><span class="src">pollen.googleapis.com</span></div>
+          <div id="pollen"></div>
+        </div>
+
+        <div class="panel">
+          <div class="head" style="margin-bottom: 0;"><span class="title">Sun</span><span class="src">weather.googleapis.com</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>weather.googleapis.com &middot; v1/currentConditions &middot; airquality.googleapis.com &middot; pollen.googleapis.com</span>
+      <span>Synced 2 min ago</span>
+    </div>
+
+  </div>
+</div>
+
+<p class="caption">Instrument tiles reuse the Dashboard's <code>.metric</code> severity-color convention (teal/brass/ember, low&rarr;high) for UV Index; Air Quality and Pollen get their own panels rather than tiles &mdash; both are richer than a single number (AQI + category + dominant pollutant; three pollen types each with their own 0&ndash;5 index) and come from entirely separate APIs not yet wired into <code>src/weather.cpp</code> (see <a href="../environmental-apis.md">environmental-apis.md</a>). Pressure/Visibility/Dew Point <b>are</b> already returned by the Weather API's own <code>currentConditions:lookup</code> (just not read by <code>weather_parse.h</code>'s filter yet) &mdash; the closest thing to a "free" addition here.</p>
+
+<script>
+  const iconHumidity = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3C12 3 5 11.5 5 16C5 19.9 8.1 23 12 23C15.9 23 19 19.9 19 16C19 11.5 12 3 12 3Z" stroke="var(--teal)" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+  const iconWind = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" stroke-width="1.7" stroke-linecap="round"><path d="M2 8h13a3 3 0 1 0-2.5-4.6"/><path d="M2 13h17a3 3 0 1 1-2.3 4.9"/><path d="M2 18h9a2.4 2.4 0 1 1-1.9 3.9"/></svg>`;
+  const iconUv = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="var(--brass)" stroke-width="1.7"/><g stroke="var(--brass)" stroke-width="1.7" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"/><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"/><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"/></g></svg>`;
+  const iconPressure = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="9" stroke="var(--sub)" stroke-width="1.7"/><path d="M12 13 16 9" stroke="var(--brass)" stroke-width="1.7" stroke-linecap="round"/><path d="M12 4v1.5M4.5 8.5 6 9.3M19.5 8.5 18 9.3" stroke="var(--sub)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+  const iconVisibility = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12Z" stroke="var(--sub)" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" stroke="var(--sub)" stroke-width="1.7"/></svg>`;
+  const iconDew = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3C12 3 5 11.5 5 16C5 19.9 8.1 23 12 23C15.9 23 19 19.9 19 16C19 11.5 12 3 12 3Z" stroke="var(--teal)" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 16a3 3 0 0 0 3 3" stroke="var(--paper)" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+
+  const tiles = [
+    { icon: iconHumidity, label: "Humidity", value: "62", unit: "%", sub: "Typical for this time of day" },
+    { icon: iconWind, label: "Wind", value: "8", unit: "mph NW", sub: "Gusting to 14 mph" },
+    { icon: iconUv, label: "UV Index", value: "4", unit: "", sub: "Moderate", sev: "sev-moderate" },
+    { icon: iconPressure, label: "Pressure", value: "1019", unit: "mb", sub: "Sea-level equivalent" },
+    { icon: iconVisibility, label: "Visibility", value: "10", unit: "mi", sub: "Clear conditions" },
+    { icon: iconDew, label: "Dew Point", value: "58", unit: "&deg;", sub: "Comfortable" },
+  ];
+  const tilesWrap = document.getElementById('tiles');
+  tiles.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'tile';
+    el.innerHTML = `
+      <div class="top">${t.icon}<span class="label">${t.label}</span></div>
+      <span class="value ${t.sev || ''}">${t.value}<span>${t.unit}</span></span>
+      <span class="sub">${t.sub}</span>
+    `;
+    tilesWrap.appendChild(el);
+  });
+
+  // Universal Pollen Index: 0 None, 1 Very Low, 2 Low, 3 Moderate, 4 High, 5 Very High.
+  const pollenTypes = [
+    { name: "Tree", value: 2, cat: "Low", color: "var(--teal)" },
+    { name: "Grass", value: 4, cat: "High", color: "var(--ember)" },
+    { name: "Weed", value: 1, cat: "Very Low", color: "var(--teal)" },
+  ];
+  const pollenWrap = document.getElementById('pollen');
+  pollenTypes.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'pollen-row';
+    const pct = (p.value / 5) * 100;
+    row.innerHTML = `
+      <span class="name">${p.name}</span>
+      <div class="pollen-bar"><div class="fill" style="width:${pct}%; background:${p.color};"></div></div>
+      <span class="pollen-cat" style="color:${p.color};">${p.cat}</span>
+    `;
+    pollenWrap.appendChild(row);
+  });
+
+  const sunPanel = document.querySelectorAll('.panel')[2];
+  sunPanel.insertAdjacentHTML('beforeend', `
+    <div style="display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:13px; margin-top: 4px;">
+      <span>&#9728; Sunrise 5:52</span>
+      <span>&#9728; Sunset 20:47</span>
+    </div>
+  `);
+
+  const toggle = document.querySelector('.toggle');
+  const device = document.getElementById('device');
+  toggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    device.setAttribute('data-theme', btn.dataset.mode);
+  });
+</script>
+</body>
+</html>
