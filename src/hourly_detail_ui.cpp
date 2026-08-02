@@ -224,6 +224,15 @@ lv_obj_t *buildChartSection(lv_obj_t *parent) {
   lv_chart_set_point_count(g_precipChart, kMaxHourCards);
   lv_chart_set_update_mode(g_precipChart, LV_CHART_UPDATE_MODE_CIRCULAR);
   lv_chart_set_axis_range(g_precipChart, LV_CHART_AXIS_PRIMARY_Y, 0, 100);
+  // LV_PART_MAIN's pad_column is the gap lv_chart's bar-type rendering
+  // opens up between each hour's column (see lv_chart.c's draw_series_bar
+  // block_w = (w - (point_cnt-1)*pad_column) / point_cnt) - stock LVGL
+  // bars default to filling most of that column's width (~76px wide at
+  // 16 points across this chart), reading as solid blocks rather than
+  // the mockup's thin 6px teal ticks (hourly-detail.html's `width: 6`
+  // precip rects). 75px of gap narrows the actual bar down to ~6px to
+  // match.
+  lv_obj_set_style_pad_column(g_precipChart, 75, LV_PART_MAIN);
   lv_obj_set_style_radius(g_precipChart, 2, LV_PART_ITEMS);
   lv_obj_set_style_bg_opa(g_precipChart, LV_OPA_60, LV_PART_ITEMS);
   g_precipSeries = lv_chart_add_series(g_precipChart, lv_color_hex(kTeal), LV_CHART_AXIS_PRIMARY_Y);

@@ -24,13 +24,13 @@ See [../RELEASE_NOTES.md](../RELEASE_NOTES.md) for the full v0.1.0 writeup.
 ## Done (since v0.1.0, not yet in a tagged release)
 
 - [x] Weather condition icons — 15-icon set (sun/mostly_clear/partly_cloudy/cloud/night_cloudy/windy/light_rain/rain/heavy_rain/snow/sleet/hail/thunderstorm/fog/moon; only sun/cloud/rain/moon come from the mockups, the other 11 are original designs added in two accuracy passes) on the Dashboard's hero glyph and each 7-day row; see [rendering.md](rendering.md#icons) for the generation pipeline and `include/weather_icon.h` for the bucketing logic. Static only — animated icons deliberately deferred, see the same doc section. Not yet split further: heavy snow/blizzard still renders as plain Snow (see rendering.md#icons's note).
-- [x] Tap-through Hourly-detail screen — the Dashboard's first real navigation target: tapping "HOURLY" pushes to a 16-hour `lv_chart` temperature line + a 2×8 grid of hour cards (real condition icons, day/night-aware), "← Dashboard" returns; see [../src/hourly_detail_ui.cpp](../src/hourly_detail_ui.cpp). `kMaxHourlyPoints` grew 8→16 to feed it (the Dashboard's own compact strip stays capped at 8 via a separate `kMaxDashboardHourCells`, decoupled on purpose). No precipitation bars/gradient fill in the chart yet — scoped out, see that file's own header comment.
+- [x] Tap-through Hourly-detail screen — the Dashboard's first real navigation target: tapping "HOURLY" pushes to a 16-hour temperature line + precipitation-chance bars (two overlaid `lv_chart`s, independent Y axes) + a 2×8 grid of hour cards (real condition icons, day/night-aware), "← Dashboard" returns, both buttons animate on press; see [../src/hourly_detail_ui.cpp](../src/hourly_detail_ui.cpp). `kMaxHourlyPoints` grew 8→16 to feed it (the Dashboard's own compact strip stays capped at 8 via a separate `kMaxDashboardHourCells`, decoupled on purpose). No gradient area fill under the temperature line yet — scoped out, see that file's own header comment.
 
 ## Not yet done
 
 Screens / UI:
 
-- [ ] Precipitation bars / gradient area fill on the Hourly-detail chart — deliberately out of scope for the first pass (`src/hourly_detail_ui.cpp`), a fast-follow once the line-series-only version is confirmed on hardware
+- [ ] Gradient area fill under the Hourly-detail chart's temperature line — the mockup renders this as an SVG `linearGradient` under the polyline; `lv_chart` has no built-in line-series fill, so it needs a custom `LV_EVENT_DRAW_MAIN_END` draw handler to paint it manually (`src/hourly_detail_ui.cpp`). Pure visual flourish, no information the line/points don't already carry — scoped out for a later pass.
 - [ ] Full 7-Day-forecast screen (day/night split per row, sunrise/sunset/moon phase, per the mockup)
 - [ ] Severe alert screen — depends on whether Google's Weather API actually surfaces alerts for a given location; not yet checked
 - [ ] Animated weather condition icons — architecture supports it (see [rendering.md](rendering.md#icons)), but needs hand-authored animation frames that don't exist yet
