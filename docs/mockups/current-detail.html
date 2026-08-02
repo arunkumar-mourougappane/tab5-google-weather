@@ -37,18 +37,28 @@
   .hilo .lo { color: var(--teal); }
   .hilo .sep { color: var(--line-strong); }
 
-  /* ---- Instrument tiles ---- */
-  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex: 1 1 auto; }
-  .tile { background: var(--panel); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
-  .tile .top { display: flex; align-items: center; gap: 8px; }
-  .tile .top svg { flex: 0 0 auto; opacity: 0.85; }
-  .tile .label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sub); }
-  .tile .value { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 500; }
-  .tile .value span { font-size: 12.5px; color: var(--sub); font-weight: 400; margin-left: 2px; }
-  .tile .sub { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--sub); }
-  .tile .value.sev-low { color: var(--teal); }
-  .tile .value.sev-moderate { color: var(--brass); }
-  .tile .value.sev-high { color: var(--ember); }
+  /* ---- Instrument gauge tiles ---- */
+  .gauge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex: 1 1 auto; }
+  .gauge-tile { background: var(--panel); padding: 12px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .gauge-tile .info { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .gauge-tile .label { font-size: 13.5px; font-weight: 600; }
+  .gauge-tile .value { font-family: 'IBM Plex Mono', monospace; font-size: 21px; font-weight: 500; margin-top: 2px; }
+  .gauge-tile .value span { font-size: 12px; color: var(--sub); font-weight: 400; margin-left: 2px; }
+  .gauge-tile .sub { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--sub); line-height: 1.4; }
+  .gauge-tile .viz { flex: 0 0 auto; }
+  .gauge-tile .value.sev-low { color: var(--teal); }
+  .gauge-tile .value.sev-moderate { color: var(--brass); }
+  .gauge-tile .value.sev-high { color: var(--ember); }
+
+  /* ---- Sunrise/sunset arc panel ---- */
+  .sun-panel { display: flex; align-items: center; gap: 20px; }
+  .sun-panel .sun-times { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; }
+  .sun-panel .sun-times .item .k { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sub); }
+  .sun-panel .sun-times .item .v { font-family: 'IBM Plex Mono', monospace; font-size: 19px; font-weight: 500; margin-top: 1px; }
+  .sun-panel .sun-times .item .v span { font-size: 11px; color: var(--sub); margin-left: 2px; }
+  .sun-panel .arc-wrap { flex: 1 1 auto; min-width: 0; }
+  .sun-panel .arc-wrap svg { display: block; width: 100%; height: auto; }
+  .sun-panel .arc-labels { display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--sub); margin-top: 2px; }
 
   /* ---- Air quality / pollen panels ---- */
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
@@ -135,10 +145,23 @@
             <span class="hi">&#9650; 74&deg; HIGH</span>
             <span class="sep">/</span>
             <span class="lo">&#9660; 58&deg; LOW</span>
+            <span class="sep">/</span>
+            <span>10 mi VISIBILITY</span>
           </div>
         </div>
 
-        <div class="tiles" id="tiles"></div>
+        <div class="gauge-grid" id="gauges"></div>
+
+        <div class="panel sun-panel">
+          <div class="sun-times">
+            <div class="item"><div class="k">Sunrise</div><div class="v">5:52<span>AM</span></div></div>
+            <div class="item"><div class="k">Sunset</div><div class="v">8:47<span>PM</span></div></div>
+          </div>
+          <div class="arc-wrap">
+            <div id="sunArc"></div>
+            <div class="arc-labels"><span>Dawn 5:22 AM</span><span>Dusk 9:17 PM</span></div>
+          </div>
+        </div>
       </div>
 
       <div class="right">
@@ -158,10 +181,6 @@
           <div class="head"><span class="title">Pollen</span><span class="src">pollen.googleapis.com</span></div>
           <div id="pollen"></div>
         </div>
-
-        <div class="panel">
-          <div class="head" style="margin-bottom: 0;"><span class="title">Sun</span><span class="src">weather.googleapis.com</span></div>
-        </div>
       </div>
     </div>
 
@@ -173,35 +192,139 @@
   </div>
 </div>
 
-<p class="caption">Instrument tiles reuse the Dashboard's <code>.metric</code> severity-color convention (teal/brass/ember, low&rarr;high) for UV Index; Air Quality and Pollen get their own panels rather than tiles &mdash; both are richer than a single number (AQI + category + dominant pollutant; three pollen types each with their own 0&ndash;5 index) and come from entirely separate APIs not yet wired into <code>src/weather.cpp</code> (see <a href="../environmental-apis.md">environmental-apis.md</a>). Pressure/Visibility/Dew Point <b>are</b> already returned by the Weather API's own <code>currentConditions:lookup</code> (just not read by <code>weather_parse.h</code>'s filter yet) &mdash; the closest thing to a "free" addition here.</p>
+<p class="caption">Each gauge shape matches how its metric is actually bounded: Wind gets a compass dial (direction is inherently angular), Humidity a filled capsule (0&ndash;100%, reads like a liquid level), UV Index a floating dot on a track (0&ndash;11+, position matters more than fill for a scale nobody has memorized), Pressure a semicircle dial (the literal shape of an analog barometer) &mdash; all computed from real trig against the sample value, not hand-drawn per reading, same "compute it" approach the Hourly-detail chart's own point positions use. Dew point folds into the Humidity tile (they're read together); Visibility stays a plain inline figure next to Hi/Lo, since a single already-legible number doesn't need a gauge. UV Index reuses the Dashboard's teal/brass/ember severity scale. Air Quality and Pollen keep their own richer panels (AQI + category + dominant pollutant; three pollen types each with a 0&ndash;5 index) &mdash; both come from separate APIs not yet wired into <code>src/weather.cpp</code> (see <a href="../environmental-apis.md">environmental-apis.md</a>). Pressure/Visibility/Dew Point <b>are</b> already returned by the Weather API's own <code>currentConditions:lookup</code> (just not read by <code>weather_parse.h</code>'s filter yet) &mdash; the closest thing to a "free" addition here.</p>
 
 <script>
-  const iconHumidity = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3C12 3 5 11.5 5 16C5 19.9 8.1 23 12 23C15.9 23 19 19.9 19 16C19 11.5 12 3 12 3Z" stroke="var(--teal)" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
-  const iconWind = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" stroke-width="1.7" stroke-linecap="round"><path d="M2 8h13a3 3 0 1 0-2.5-4.6"/><path d="M2 13h17a3 3 0 1 1-2.3 4.9"/><path d="M2 18h9a2.4 2.4 0 1 1-1.9 3.9"/></svg>`;
-  const iconUv = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="var(--brass)" stroke-width="1.7"/><g stroke="var(--brass)" stroke-width="1.7" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"/><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"/><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"/></g></svg>`;
-  const iconPressure = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="9" stroke="var(--sub)" stroke-width="1.7"/><path d="M12 13 16 9" stroke="var(--brass)" stroke-width="1.7" stroke-linecap="round"/><path d="M12 4v1.5M4.5 8.5 6 9.3M19.5 8.5 18 9.3" stroke="var(--sub)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
-  const iconVisibility = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12Z" stroke="var(--sub)" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" stroke="var(--sub)" stroke-width="1.7"/></svg>`;
-  const iconDew = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3C12 3 5 11.5 5 16C5 19.9 8.1 23 12 23C15.9 23 19 19.9 19 16C19 11.5 12 3 12 3Z" stroke="var(--teal)" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 16a3 3 0 0 0 3 3" stroke="var(--paper)" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+  // ---- Gauge generators - real trig against the value, not hand-drawn
+  // paths, same "compute it, don't eyeball it" approach the Hourly-detail
+  // chart's own point-label positioning uses (lv_chart_get_point_pos_by_id()).
 
-  const tiles = [
-    { icon: iconHumidity, label: "Humidity", value: "62", unit: "%", sub: "Typical for this time of day" },
-    { icon: iconWind, label: "Wind", value: "8", unit: "mph NW", sub: "Gusting to 14 mph" },
-    { icon: iconUv, label: "UV Index", value: "4", unit: "", sub: "Moderate", sev: "sev-moderate" },
-    { icon: iconPressure, label: "Pressure", value: "1019", unit: "mb", sub: "Sea-level equivalent" },
-    { icon: iconVisibility, label: "Visibility", value: "10", unit: "mi", sub: "Clear conditions" },
-    { icon: iconDew, label: "Dew Point", value: "58", unit: "&deg;", sub: "Comfortable" },
+  // Compass dial: dashed ring + a triangular pointer rotated to the wind's
+  // origin bearing (compassDeg: 0=N, 90=E, 180=S, 270=W - "from" direction,
+  // matching the Weather API's own wind.direction.degrees).
+  function compassGauge(compassDeg) {
+    const cx = 32, cy = 32, r = 22;
+    const rad = (compassDeg - 90) * Math.PI / 180;
+    const tip = [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+    const spread = 2.5; // radians of triangle half-width at its base
+    const baseR = 9;
+    const b1 = [cx + baseR * Math.cos(rad + spread), cy + baseR * Math.sin(rad + spread)];
+    const b2 = [cx + baseR * Math.cos(rad - spread), cy + baseR * Math.sin(rad - spread)];
+    const pts = [tip, b1, b2].map(p => p.map(n => n.toFixed(1)).join(',')).join(' ');
+    return `<svg width="64" height="64" viewBox="0 0 64 64">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="2 4"/>
+      <text x="${cx}" y="7" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" fill="var(--sub)">N</text>
+      <polygon points="${pts}" fill="var(--brass)"/>
+    </svg>`;
+  }
+
+  // Vertical capsule gauge (Humidity): filled from the bottom up to pct,
+  // with a triangle pointer marking the fill line - mirrors a thermometer/
+  // liquid-level reading more literally than a dial does, which fits a
+  // 0-100% linear quantity better than an angular one.
+  let capsuleClipId = 0;
+  function capsuleGauge(pct, color) {
+    capsuleClipId++;
+    const x = 20, y = 4, w = 18, h = 62, r = 9;
+    const fillH = Math.max(6, (pct / 100) * h);
+    const fillY = y + h - fillH;
+    const clipId = `capclip${capsuleClipId}`;
+    return `<svg width="52" height="78" viewBox="0 0 52 78">
+      <text x="38" y="10" font-family="'IBM Plex Mono', monospace" font-size="9" fill="var(--sub)">100</text>
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="none" stroke="var(--line-strong)" stroke-width="1.5"/>
+      <clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}"/></clipPath>
+      <rect x="${x}" y="${fillY.toFixed(1)}" width="${w}" height="${fillH.toFixed(1)}" fill="${color}" clip-path="url(#${clipId})"/>
+      <polygon points="${x - 3},${fillY.toFixed(1)} ${x - 9},${(fillY - 4).toFixed(1)} ${x - 9},${(fillY + 4).toFixed(1)}" fill="var(--ink)"/>
+      <text x="38" y="76" font-family="'IBM Plex Mono', monospace" font-size="9" fill="var(--sub)">0</text>
+    </svg>`;
+  }
+
+  // Vertical track + floating dot (UV Index, 0-11 scale): a dot's *position*
+  // reads faster than a filled bar for a scale most people don't have
+  // memorized end-to-end, and its color reuses the same severity scale the
+  // Dashboard's own UV metric already established (teal/brass/ember).
+  function dotTrackGauge(pct, color) {
+    const trackX = 28, y0 = 6, y1 = 66;
+    const dotY = y1 - (pct / 100) * (y1 - y0);
+    return `<svg width="52" height="78" viewBox="0 0 52 78">
+      <text x="38" y="10" font-family="'IBM Plex Mono', monospace" font-size="9" fill="var(--sub)">11+</text>
+      <line x1="${trackX}" y1="${y0}" x2="${trackX}" y2="${y1}" stroke="var(--line-strong)" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="${trackX}" cy="${dotY.toFixed(1)}" r="8" fill="${color}"/>
+      <polygon points="${trackX - 12},${dotY.toFixed(1)} ${trackX - 18},${(dotY - 4).toFixed(1)} ${trackX - 18},${(dotY + 4).toFixed(1)}" fill="var(--ink)"/>
+      <text x="38" y="74" font-family="'IBM Plex Mono', monospace" font-size="9" fill="var(--sub)">0</text>
+    </svg>`;
+  }
+
+  // Semicircle gauge (Pressure): a 180-degree arc from Low to High, filled
+  // up to the current reading, plus a needle - same shape as an analog
+  // barometer, which is the instrument this metric is named after.
+  function semiGauge(pct) {
+    const cx = 32, cy = 38, r = 26;
+    const toXY = deg => {
+      const rad = deg * Math.PI / 180;
+      return [cx + r * Math.cos(rad), cy - r * Math.sin(rad)];
+    };
+    const curDeg = 180 - (pct / 100) * 180;
+    const [px, py] = toXY(curDeg);
+    const needleLen = r - 5;
+    const nx = cx + needleLen * Math.cos(curDeg * Math.PI / 180);
+    const ny = cy - needleLen * Math.sin(curDeg * Math.PI / 180);
+    return `<svg width="68" height="48" viewBox="0 0 64 44">
+      <path d="M ${(cx - r).toFixed(1)} ${cy.toFixed(1)} A ${r} ${r} 0 0 1 ${(cx + r).toFixed(1)} ${cy.toFixed(1)}" fill="none" stroke="var(--line-strong)" stroke-width="5" stroke-linecap="round"/>
+      <path d="M ${(cx - r).toFixed(1)} ${cy.toFixed(1)} A ${r} ${r} 0 0 1 ${px.toFixed(1)} ${py.toFixed(1)}" fill="none" stroke="var(--brass)" stroke-width="5" stroke-linecap="round"/>
+      <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="${cx}" cy="${cy}" r="2.5" fill="var(--ink)"/>
+      <text x="${cx - r}" y="${cy + 12}" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" fill="var(--sub)">Low</text>
+      <text x="${cx + r}" y="${cy + 12}" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" fill="var(--sub)">High</text>
+    </svg>`;
+  }
+
+  const gauges = [
+    { label: "Wind", value: "8", unit: "mph", sub: "Moderate &middot; From NW", viz: compassGauge(315) },
+    { label: "Humidity", value: "62", unit: "%", sub: "Dew point 58&deg;", viz: capsuleGauge(62, "var(--teal)") },
+    { label: "UV Index", value: "4", unit: "", sub: "Moderate", sev: "sev-moderate", viz: dotTrackGauge((4 / 11) * 100, "var(--brass)") },
+    { label: "Pressure", value: "1,019", unit: "mBar", sub: "Sea-level equivalent", viz: semiGauge(48) },
   ];
-  const tilesWrap = document.getElementById('tiles');
-  tiles.forEach(t => {
+  const gaugeWrap = document.getElementById('gauges');
+  gauges.forEach(g => {
     const el = document.createElement('div');
-    el.className = 'tile';
+    el.className = 'gauge-tile';
     el.innerHTML = `
-      <div class="top">${t.icon}<span class="label">${t.label}</span></div>
-      <span class="value ${t.sev || ''}">${t.value}<span>${t.unit}</span></span>
-      <span class="sub">${t.sub}</span>
+      <div class="info">
+        <span class="label">${g.label}</span>
+        <span class="value ${g.sev || ''}">${g.value}<span>${g.unit}</span></span>
+        <span class="sub">${g.sub}</span>
+      </div>
+      <div class="viz">${g.viz}</div>
     `;
-    tilesWrap.appendChild(el);
+    gaugeWrap.appendChild(el);
   });
+
+  // Sunrise/sunset arc: a smooth day-hump (cubic bezier) over a flat night
+  // baseline, with a marker at the "now" position - same "compute the
+  // curve, don't hand-draw it" approach as the gauges above. dawnFrac/
+  // duskFrac/nowFrac are all 0-1 positions across the 24h day.
+  function sunArc(dawnFrac, duskFrac, nowFrac) {
+    const w = 400, h = 90, baseY = 66, peakY = 18;
+    const x = f => f * w;
+    const dawnX = x(dawnFrac), duskX = x(duskFrac), nowX = x(nowFrac);
+    const midX = (dawnX + duskX) / 2;
+    const path = `M 0 ${baseY} L ${dawnX.toFixed(1)} ${baseY} C ${(dawnX + (midX - dawnX) * 0.6).toFixed(1)} ${peakY}, ${(midX - (midX - dawnX) * 0.6).toFixed(1)} ${peakY}, ${midX.toFixed(1)} ${peakY} C ${(midX + (duskX - midX) * 0.4).toFixed(1)} ${peakY}, ${(duskX - (duskX - midX) * 0.4).toFixed(1)} ${baseY}, ${duskX.toFixed(1)} ${baseY} L ${w} ${baseY}`;
+    const isDay = nowFrac >= dawnFrac && nowFrac <= duskFrac;
+    // Rough y-on-curve for the "now" marker: same dawn/dusk-relative arc
+    // shape, evaluated at nowFrac rather than solved analytically off the
+    // bezier - close enough for a mockup's illustrative marker.
+    const nowY = isDay
+      ? baseY - (baseY - peakY) * Math.sin(((nowFrac - dawnFrac) / (duskFrac - dawnFrac)) * Math.PI)
+      : baseY;
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <line x1="0" y1="${baseY}" x2="${w}" y2="${baseY}" stroke="var(--line)" stroke-width="1"/>
+      <path d="${path} L ${w} ${h} L 0 ${h} Z" fill="var(--brass)" opacity="0.14"/>
+      <path d="${path}" fill="none" stroke="var(--brass)" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="${nowX.toFixed(1)}" cy="${nowY.toFixed(1)}" r="4.5" fill="var(--brass-strong)" stroke="var(--paper)" stroke-width="2"/>
+    </svg>`;
+  }
+  document.getElementById('sunArc').innerHTML = sunArc(0.22, 0.87, 0.58);
 
   // Universal Pollen Index: 0 None, 1 Very Low, 2 Low, 3 Moderate, 4 High, 5 Very High.
   const pollenTypes = [
