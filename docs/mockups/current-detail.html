@@ -78,12 +78,19 @@
     background: linear-gradient(90deg, var(--teal) 0%, var(--brass) 45%, var(--ember) 100%); }
   .aqi-scale .marker { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--ink); border-radius: 1px; }
 
-  .pollen-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
-  .pollen-row:first-of-type { border-top: none; padding-top: 0; }
-  .pollen-row .name { font-size: 13px; font-weight: 600; width: 58px; flex: 0 0 auto; }
-  .pollen-bar { position: relative; height: 6px; flex: 1 1 auto; background: var(--line); border-radius: 3px; }
-  .pollen-bar .fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 3px; }
-  .pollen-cat { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; width: 68px; text-align: right; flex: 0 0 auto; }
+  /* Pollen: a pill-shaped panel (deliberately much rounder than every
+     other panel on this screen, including AQI right above it - left
+     as-is per request) with a centered title and three ring gauges,
+     one per pollen type. */
+  .pollen-panel { border-radius: 40px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .pollen-panel .pollen-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+  .pollen-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 100%; }
+  .pollen-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .pollen-tile .ring-wrap { position: relative; }
+  .pollen-tile .ring-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .pollen-tile .name { font-size: 12px; font-weight: 600; margin-top: 2px; }
+  .pollen-tile .val { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 500; margin-top: 2px; }
+  .pollen-tile .cat { font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
 
   .footer { margin-top: auto; padding-top: 8px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--sub); letter-spacing: 0.03em; }
 </style>
@@ -177,8 +184,11 @@
           <div class="aqi-scale"><div class="marker" style="left: 31%;"></div></div>
         </div>
 
-        <div class="panel" style="flex: 1 1 auto;">
-          <div class="head"><span class="title">Pollen</span><span class="src">pollen.googleapis.com</span></div>
+        <div class="panel pollen-panel" style="flex: 1 1 auto;">
+          <div class="pollen-title">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="2.4" fill="var(--brass)"/><g stroke="var(--brass)" stroke-width="1.4" stroke-linecap="round"><line x1="9" y1="9" x2="9" y2="3.5"/><line x1="9" y1="9" x2="13.5" y2="6.2"/><line x1="9" y1="9" x2="13.5" y2="11.8"/><line x1="9" y1="9" x2="9" y2="14.5"/><line x1="9" y1="9" x2="4.5" y2="11.8"/><line x1="9" y1="9" x2="4.5" y2="6.2"/></g></svg>
+            Pollen
+          </div>
           <div id="pollen"></div>
         </div>
       </div>
@@ -192,7 +202,7 @@
   </div>
 </div>
 
-<p class="caption">Each gauge shape matches how its metric is actually bounded: Wind gets a compass dial (direction is inherently angular), Humidity a filled capsule (0&ndash;100%, reads like a liquid level), UV Index a floating dot on a track (0&ndash;11+, position matters more than fill for a scale nobody has memorized), Pressure a semicircle dial (the literal shape of an analog barometer) &mdash; all computed from real trig against the sample value, not hand-drawn per reading, same "compute it" approach the Hourly-detail chart's own point positions use. Dew point folds into the Humidity tile (they're read together); Visibility stays a plain inline figure next to Hi/Lo, since a single already-legible number doesn't need a gauge. UV Index reuses the Dashboard's teal/brass/ember severity scale. Air Quality and Pollen keep their own richer panels (AQI + category + dominant pollutant; three pollen types each with a 0&ndash;5 index) &mdash; both come from separate APIs not yet wired into <code>src/weather.cpp</code> (see <a href="../environmental-apis.md">environmental-apis.md</a>). Pressure/Visibility/Dew Point <b>are</b> already returned by the Weather API's own <code>currentConditions:lookup</code> (just not read by <code>weather_parse.h</code>'s filter yet) &mdash; the closest thing to a "free" addition here.</p>
+<p class="caption">Each gauge shape matches how its metric is actually bounded: Wind gets a compass dial (direction is inherently angular), Humidity a filled capsule (0&ndash;100%, reads like a liquid level), UV Index a floating dot on a track (0&ndash;11+, position matters more than fill for a scale nobody has memorized), Pressure a semicircle dial (the literal shape of an analog barometer) &mdash; all computed from real trig against the sample value, not hand-drawn per reading, same "compute it" approach the Hourly-detail chart's own point positions use. Dew point folds into the Humidity tile (they're read together); Visibility stays a plain inline figure next to Hi/Lo, since a single already-legible number doesn't need a gauge. UV Index reuses the Dashboard's teal/brass/ember severity scale. Air Quality keeps its single-number-plus-scale panel (AQI + category + dominant pollutant), left as-is; Pollen gets its own pill-shaped panel with a 270-degree ring gauge per type (Grass/Tree/Weed) - a real 0&ndash;5 Universal Pollen Index, not the 0&ndash;4 scale a certain phone weather app's own pollen cards use. Both come from separate APIs not yet wired into <code>src/weather.cpp</code> (see <a href="../environmental-apis.md">environmental-apis.md</a>). Pressure/Visibility/Dew Point <b>are</b> already returned by the Weather API's own <code>currentConditions:lookup</code> (just not read by <code>weather_parse.h</code>'s filter yet) &mdash; the closest thing to a "free" addition here.</p>
 
 <script>
   // ---- Gauge generators - real trig against the value, not hand-drawn
@@ -326,32 +336,54 @@
   }
   document.getElementById('sunArc').innerHTML = sunArc(0.22, 0.87, 0.58);
 
+  // Ring gauge (Pollen): a 270-degree arc with a 90-degree gap centered at
+  // the bottom, same "compute the arc from real trig" approach as the
+  // other gauges - not a full 360-degree donut, so it reads as a gauge
+  // rather than a pie-chart slice.
+  function ringGauge(pct, color, icon) {
+    const size = 68, cx = size / 2, cy = size / 2, r = 25;
+    const startDeg = 135, sweepDeg = 270;
+    const toXY = deg => {
+      const rad = deg * Math.PI / 180;
+      return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+    };
+    const [sx, sy] = toXY(startDeg);
+    const [ex, ey] = toXY(startDeg + sweepDeg);
+    const valDeg = startDeg + sweepDeg * (pct / 100);
+    const [vx, vy] = toXY(valDeg);
+    const valLargeArc = sweepDeg * (pct / 100) > 180 ? 1 : 0;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <path d="M ${sx.toFixed(1)} ${sy.toFixed(1)} A ${r} ${r} 0 1 1 ${ex.toFixed(1)} ${ey.toFixed(1)}" fill="none" stroke="var(--line-strong)" stroke-width="6" stroke-linecap="round"/>
+      <path d="M ${sx.toFixed(1)} ${sy.toFixed(1)} A ${r} ${r} 0 ${valLargeArc} 1 ${vx.toFixed(1)} ${vy.toFixed(1)}" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  const iconGrass = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="var(--ink)" stroke-width="1.4" stroke-linecap="round"><path d="M9 16V9"/><path d="M9 10C9 6 6.5 4 3.5 3.5C3.5 7 5.5 9.5 9 10Z"/><path d="M9 8C9 4.5 11 2.5 14 2C14 5.5 12 8 9 8Z"/></svg>`;
+  const iconTree = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round"><path d="M9 16V11.5"/><path d="M9 2.5C6.5 2.5 5 4.8 5 7C5 9.4 6.8 11 9 11C11.2 11 13 9.4 13 7C13 4.8 11.5 2.5 9 2.5Z"/></svg>`;
+  const iconWeed = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="var(--ink)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 16V8"/><path d="M9 9C9 6.5 7.2 5.2 5 5C5 7.5 6.8 9 9 9Z"/><path d="M9 8C9 5.8 10.6 4.5 13 4.2C13 6.8 11.2 8 9 8Z"/></svg>`;
+
   // Universal Pollen Index: 0 None, 1 Very Low, 2 Low, 3 Moderate, 4 High, 5 Very High.
   const pollenTypes = [
-    { name: "Tree", value: 2, cat: "Low", color: "var(--teal)" },
-    { name: "Grass", value: 4, cat: "High", color: "var(--ember)" },
-    { name: "Weed", value: 1, cat: "Very Low", color: "var(--teal)" },
+    { name: "Grass", value: 1, cat: "Low", icon: iconGrass, color: "var(--teal)" },
+    { name: "Tree", value: 4, cat: "High", icon: iconTree, color: "var(--ember)" },
+    { name: "Weed", value: 0, cat: "None", icon: iconWeed, color: "var(--line-strong)" },
   ];
   const pollenWrap = document.getElementById('pollen');
+  pollenWrap.className = 'pollen-grid';
   pollenTypes.forEach(p => {
-    const row = document.createElement('div');
-    row.className = 'pollen-row';
-    const pct = (p.value / 5) * 100;
-    row.innerHTML = `
+    const tile = document.createElement('div');
+    tile.className = 'pollen-tile';
+    tile.innerHTML = `
+      <div class="ring-wrap">
+        ${ringGauge((p.value / 5) * 100, p.color, p.icon)}
+        <div class="ring-icon">${p.icon}</div>
+      </div>
       <span class="name">${p.name}</span>
-      <div class="pollen-bar"><div class="fill" style="width:${pct}%; background:${p.color};"></div></div>
-      <span class="pollen-cat" style="color:${p.color};">${p.cat}</span>
+      <span class="val" style="color:${p.color};">${p.value}<span style="color:var(--sub);">/5</span></span>
+      <span class="cat" style="color:${p.color};">${p.cat}</span>
     `;
-    pollenWrap.appendChild(row);
+    pollenWrap.appendChild(tile);
   });
-
-  const sunPanel = document.querySelectorAll('.panel')[2];
-  sunPanel.insertAdjacentHTML('beforeend', `
-    <div style="display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:13px; margin-top: 4px;">
-      <span>&#9728; Sunrise 5:52</span>
-      <span>&#9728; Sunset 20:47</span>
-    </div>
-  `);
 
   const toggle = document.querySelector('.toggle');
   const device = document.getElementById('device');
