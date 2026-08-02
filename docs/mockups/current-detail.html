@@ -16,6 +16,15 @@
   .statusbar h2 { font-size: 17px; font-weight: 700; margin: 0; }
   .statusbar .sub { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--sub); margin-top: 3px; }
   .statusbar .clock { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 500; }
+  .statusbar .right { display: flex; align-items: center; gap: 14px; }
+  .refresh-btn {
+    display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    border: 1px solid var(--line-strong); border-radius: 999px; background: transparent;
+    cursor: pointer; color: var(--sub); padding: 0;
+  }
+  .refresh-btn:hover { border-color: var(--brass); color: var(--brass-strong); }
+  .refresh-btn:active svg { animation: refresh-spin 0.5s ease-in-out; }
+  @keyframes refresh-spin { to { transform: rotate(180deg); } }
 
   .body { flex: 1 1 auto; display: grid; grid-template-columns: 1.35fr 1fr; gap: 0; min-height: 0; border-top: 1px solid var(--line); }
   .left { padding: 18px 26px 16px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 16px; min-height: 0; }
@@ -59,6 +68,13 @@
   .sun-panel .arc-wrap { flex: 1 1 auto; min-width: 0; }
   .sun-panel .arc-wrap svg { display: block; width: 100%; height: auto; }
   .sun-panel .arc-labels { display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--sub); margin-top: 2px; }
+
+  /* ---- Moon phase panel, next to Sun ---- */
+  .env-row { display: flex; gap: 10px; align-items: stretch; }
+  .env-row .sun-panel { flex: 1.7 1 0; }
+  .moon-panel { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+  .moon-panel .title { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sub); align-self: flex-start; }
+  .moon-panel .phase-name { font-size: 13.5px; font-weight: 600; margin-top: 2px; }
 
   /* ---- Air quality / pollen panels ---- */
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
@@ -124,7 +140,15 @@
           <div class="sub">BELLEVUE, WA</div>
         </div>
       </div>
-      <span class="clock">14:32</span>
+      <div class="right">
+        <button type="button" class="refresh-btn" title="Refresh now" aria-label="Refresh now">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13.5 8A5.5 5.5 0 1 1 11.8 4.1"/>
+            <path d="M13.7 2.5V5.5H10.7"/>
+          </svg>
+        </button>
+        <span class="clock">14:32</span>
+      </div>
     </div>
 
     <div class="body">
@@ -159,14 +183,22 @@
 
         <div class="gauge-grid" id="gauges"></div>
 
-        <div class="panel sun-panel">
-          <div class="sun-times">
-            <div class="item"><div class="k">Sunrise</div><div class="v">5:52<span>AM</span></div></div>
-            <div class="item"><div class="k">Sunset</div><div class="v">8:47<span>PM</span></div></div>
+        <div class="env-row">
+          <div class="panel sun-panel">
+            <div class="sun-times">
+              <div class="item"><div class="k">Sunrise</div><div class="v">5:52<span>AM</span></div></div>
+              <div class="item"><div class="k">Sunset</div><div class="v">8:47<span>PM</span></div></div>
+            </div>
+            <div class="arc-wrap">
+              <div id="sunArc"></div>
+              <div class="arc-labels"><span>Dawn 5:22 AM</span><span>Dusk 9:17 PM</span></div>
+            </div>
           </div>
-          <div class="arc-wrap">
-            <div id="sunArc"></div>
-            <div class="arc-labels"><span>Dawn 5:22 AM</span><span>Dusk 9:17 PM</span></div>
+
+          <div class="panel moon-panel">
+            <span class="title">Moon</span>
+            <div id="moonIcon"></div>
+            <span class="phase-name" id="moonName"></span>
           </div>
         </div>
       </div>
@@ -196,7 +228,7 @@
 
     <div class="footer">
       <span>weather.googleapis.com &middot; v1/currentConditions &middot; airquality.googleapis.com &middot; pollen.googleapis.com</span>
-      <span>Synced 2 min ago</span>
+      <span id="syncedLabel">Synced 2 min ago</span>
     </div>
 
   </div>
@@ -336,6 +368,50 @@
   }
   document.getElementById('sunArc').innerHTML = sunArc(0.22, 0.87, 0.58);
 
+  // Moon phase icon: the illuminated region is two arcs sharing the same
+  // top/bottom points - an outer r-radius half-circle (which side depends
+  // on waxing vs. waning) and an inner ellipse arc whose horizontal
+  // radius is r*cos(theta) (theta: 0=new, pi=full, 2pi=new again). This
+  // is the standard "two-arc" construction for a phase disc, not a set
+  // of 8 pre-drawn images - one formula covers every phase Google's API
+  // can send, including in-between ones if it ever does.
+  function moonPhaseIcon(theta, size) {
+    const r = size / 2 - 3, cx = size / 2, cy = size / 2;
+    const rx = Math.abs(r * Math.cos(theta));
+    const sweep1 = theta < Math.PI ? 1 : 0;
+    const sweep2 = (theta < Math.PI / 2 || theta > 3 * Math.PI / 2) ? sweep1 : 1 - sweep1;
+    const litPath = `M ${cx} ${(cy - r).toFixed(1)} A ${r} ${r} 0 0 ${sweep1} ${cx} ${(cy + r).toFixed(1)} A ${rx.toFixed(1)} ${r} 0 0 ${sweep2} ${cx} ${(cy - r).toFixed(1)} Z`;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--line-strong)"/>
+      <path d="${litPath}" fill="var(--brass)"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--line-strong)" stroke-width="1"/>
+    </svg>`;
+  }
+
+  // theta per Google Weather API's moonEvents.moonPhase enum values
+  // (confirmed values: see test/test_weather/test_main.cpp's fixture,
+  // which uses WANING_GIBBOUS - the full 8-phase set below is the
+  // standard astronomical vocabulary that enum is drawn from).
+  const moonPhases = {
+    NEW_MOON: 0,
+    WAXING_CRESCENT: Math.PI / 4,
+    FIRST_QUARTER: Math.PI / 2,
+    WAXING_GIBBOUS: 3 * Math.PI / 4,
+    FULL_MOON: Math.PI,
+    WANING_GIBBOUS: 5 * Math.PI / 4,
+    LAST_QUARTER: 3 * Math.PI / 2,
+    WANING_CRESCENT: 7 * Math.PI / 4,
+  };
+  // "WANING_GIBBOUS" -> "Waning gibbous" - same formatter daily_forecast_ui.cpp's
+  // formatMoonPhase() applies to the real enum string at render time.
+  function formatMoonPhase(raw) {
+    const s = raw.toLowerCase().replace(/_/g, ' ');
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  const currentMoonPhase = "WANING_GIBBOUS";
+  document.getElementById('moonIcon').innerHTML = moonPhaseIcon(moonPhases[currentMoonPhase], 64);
+  document.getElementById('moonName').textContent = formatMoonPhase(currentMoonPhase);
+
   // Ring gauge (Pollen): a 270-degree arc with a 90-degree gap centered at
   // the bottom, same "compute the arc from real trig" approach as the
   // other gauges - not a full 360-degree donut, so it reads as a gauge
@@ -392,6 +468,10 @@
     if (!btn) return;
     toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
     device.setAttribute('data-theme', btn.dataset.mode);
+  });
+
+  document.querySelector('.refresh-btn').addEventListener('click', () => {
+    document.getElementById('syncedLabel').textContent = 'Synced just now';
   });
 </script>
 </body>
